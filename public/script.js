@@ -1,23 +1,3 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-storage.js";
-
-// ------------------------------------------
-// CONFIGURACIÓN DE FIREBASE
-// ------------------------------------------
-const firebaseConfig = {
-  apiKey: "AIzaSyCgn4N-q8kNmNEsj_1WjrKikBgi7R5BJjM",
-  authDomain: "futurestar-23fc3.firebaseapp.com",
-  projectId: "futurestar-23fc3",
-  storageBucket: "futurestar-23fc3.firebasestorage.app",
-  messagingSenderId: "198948959895",
-  appId: "1:198948959895:web:4759b82aa8927763219bd2"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const storage = getStorage(app);
-
 document.addEventListener("DOMContentLoaded", () => {
 
   // ------------------------------------------
@@ -25,11 +5,33 @@ document.addEventListener("DOMContentLoaded", () => {
   // ------------------------------------------
   let cart = [];
   let currentQuantity = 1;
-  let currentAvailableStock = 0; 
+  let currentAvailableStock = 0; // NUEVO: Controla el stock actual de la talla seleccionada
   let currentProduct = {};
   let selectedRating = 5;
 
+  // Base de datos simulada de reseñas por producto
+  const productReviews = {
+    "SAKURA": [
+      { name: "Adrián R.", stars: 5, text: "La calidad de la tela está increíble, llegó súper rápido." },
+      { name: "Sofía T.", stars: 5, text: "Muy cómoda y el estampado se ve idéntico a las fotos." }
+    ],
+    "VIBES": [
+      { name: "Mateo G.", stars: 4, text: "Excelente si me quedo oversize, la recomiendo al 100%." },
+    { name: "Jean P.", stars: 5, text: "la llevo siempre para entrenar, la tela no se siente pesada ni estorba para hacer los ejercicios." }
+    ],
+    "HUNTING": [
+      { name: "Miriam D.", stars: 5, text: "Súper cómoda me gusto el diseño, totalmente recomendada." },
+       { name: "Kimy M.", stars: 4, text: "Nice." },
+      { name: "Ximena M.", stars: 5, text: "Me encanta, la tela se siente fresca." }
+    ],
+    "DREAM": [
+      { name: "Matthew S.", stars: 4, text: "la playera luse bien pero tardo mas de lo esperado en llegar." },
+    { name: "Jean P.", stars: 5, text: "Tal como las imagenes, la tela se siente de calidad y el estampado tambien." }
+      ],
+  };
+
   // NUEVO: Base de datos simulada de inventario (Stock por producto y talla)
+  // Aquí debes poner tu inventario real de LEVSTARK
   const productStock = {
     "SAKURA": { "S": 1, "M": 0, "L": 0, "XL": 0 },
     "VIBES": { "S": 1, "M": 1, "L": 0, "XL": 0 },
@@ -159,6 +161,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // ==========================================
   // 4. CONTROL DE INVENTARIO Y CANTIDAD
   // ==========================================
+  
+  // Función para inyectar/actualizar el mensaje de stock visual
   const showStockMessage = (msg, color) => {
     let msgEl = document.getElementById("dynamicStockMsg");
     if (!msgEl) {
@@ -168,6 +172,7 @@ document.addEventListener("DOMContentLoaded", () => {
       msgEl.style.fontWeight = "600";
       msgEl.style.marginTop = "8px";
       msgEl.style.marginBottom = "0";
+      // Insertamos el mensaje debajo del selector de tallas
       if (sizeSelect && sizeSelect.parentNode) {
         sizeSelect.parentNode.appendChild(msgEl);
       }
@@ -176,6 +181,7 @@ document.addEventListener("DOMContentLoaded", () => {
     msgEl.style.color = color;
   };
 
+  // Función principal que revisa si tienes producto
   const updateStockUI = (size) => {
     if (!size) {
       currentAvailableStock = 0;
@@ -189,15 +195,18 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const title = currentProduct.title;
+    // Buscamos cuánto stock base tienes
     const baseStock = (productStock[title] && productStock[title][size] !== undefined)? 
                        productStock[title][size] 
                       : 0;
 
+    // Descontamos lo que el usuario YA tiene en su carrito
     const cartItem = cart.find(item => item.title === title && item.size === size);
     const cartQty = cartItem ? cartItem.quantity : 0;
     
     currentAvailableStock = baseStock - cartQty;
 
+    // Si ya no hay stock
     if (currentAvailableStock <= 0) {
       currentQuantity = 0;
       if (qtyVal) qtyVal.innerText = 0;
@@ -210,6 +219,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       showStockMessage("Agotado en esta talla", "#ff3333");
     } else {
+      // Si hay stock, reajustamos controles
       if (currentQuantity === 0 || currentQuantity > currentAvailableStock) {
         currentQuantity = 1;
       }
@@ -236,18 +246,20 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
+  // Escuchar cuando el cliente cambie de talla
   if (sizeSelect) {
     sizeSelect.addEventListener("change", (e) => {
       updateStockUI(e.target.value);
     });
   }
 
+  // Controles + y - con limitantes de stock
   if (qtyMinus && qtyPlus && qtyVal) {
     qtyMinus.addEventListener("click", () => {
       if (currentQuantity > 1) {
         currentQuantity--;
         qtyVal.innerText = currentQuantity;
-        qtyPlus.disabled = false;
+        qtyPlus.disabled = false; // Al restar, reactivamos el plus
       }
     });
 
@@ -263,6 +275,7 @@ document.addEventListener("DOMContentLoaded", () => {
         qtyVal.innerText = currentQuantity;
       }
 
+      // Si llegó al tope del stock, deshabilitamos el botón
       if (currentQuantity >= currentAvailableStock) {
         qtyPlus.disabled = true;
       }
@@ -328,9 +341,9 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
 
-      // Cargar reseñas desde Firebase para este producto
-      cargarReseñasDeFirebase(currentProduct.title);
+      renderReviews(currentProduct.title);
 
+      // Reseteo de controles al abrir un producto nuevo
       if (sizeSelect) sizeSelect.value = "";
       currentQuantity = 1;
       if (qtyVal) qtyVal.innerText = currentQuantity;
@@ -360,65 +373,40 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   // ==========================================
-  // 6. SISTEMA DE RESEÑAS CON FIREBASE (TEXTO + FOTO)
+  // 6. SISTEMA DE RESEÑAS / REVIEWS
   // ==========================================
   const reviewsList = document.getElementById("reviewsList");
   const toggleReviewFormBtn = document.getElementById("toggleReviewFormBtn");
   const reviewForm = document.getElementById("reviewForm");
   const starBtns = document.querySelectorAll(".star-btn");
-  const reviewImageInput = document.getElementById("reviewImage");
 
-  async function cargarReseñasDeFirebase(productTitle) {
+  function renderReviews(title) {
     if (!reviewsList) return;
-    reviewsList.innerHTML = `<p style='color: #888; font-size: 13px; text-align: center; padding: 10px;'>Cargando opiniones...</p>`;
+    const reviews = productReviews[title] || [];
 
-    try {
-      const q = query(collection(db, "reviews"), orderBy("fecha", "desc"));
-      const querySnapshot = await getDocs(q);
-      
+    if (reviews.length === 0) {
+      reviewsList.innerHTML = `
+        <div style="text-align: center; padding: 12px; background: #f8f8f8; border-radius: 4px; color: #666; font-size: 13px;">
+          <p>Aún no hay reseñas para esta prenda.</p>
+          <p style="margin-top:2px; font-weight:bold;">¡Sé el primero en opinar!</p>
+        </div>
+      `;
+    } else {
       reviewsList.innerHTML = "";
-      let foundAny = false;
-
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        // Filtramos solo las reseñas que correspondan a este producto
-        if (data.productTitle === productTitle) {
-          foundAny = true;
-          renderizarItemReseña(data);
-        }
-      });
-
-      if (!foundAny) {
-        reviewsList.innerHTML = `
-          <div style="text-align: center; padding: 12px; background: #151515; border-radius: 4px; color: #aaa; font-size: 13px; border: 1px dashed #333;">
-            <p>Aún no hay reseñas para esta prenda.</p>
-            <p style="margin-top:2px; font-weight:bold; color: #22e600;">¡Sé el primero en opinar!</p>
+      reviews.forEach((r) => {
+        const starsHtml = "★".repeat(r.stars) + "☆".repeat(5 - r.stars);
+        const item = document.createElement("div");
+        item.className = "review-item";
+        item.innerHTML = `
+          <div class="review-item-header">
+            <span class="review-author">${r.name}</span>
+            <span class="review-stars">${starsHtml}</span>
           </div>
+          <p class="review-text">${r.text}</p>
         `;
-      }
-    } catch (error) {
-      console.error("Error al cargar reseñas de Firebase:", error);
-      reviewsList.innerHTML = `<p style='color: #ff3333; font-size: 13px;'>Error al cargar las opiniones.</p>`;
+        reviewsList.appendChild(item);
+      });
     }
-  }
-
-  function renderizarItemReseña(data) {
-    const starsHtml = "★".repeat(data.stars) + "☆".repeat(5 - data.stars);
-    const item = document.createElement("div");
-    item.className = "review-item";
-    
-    // Si la reseña incluye foto, la agregamos
-    let imageHtml = data.imageUrl ? `<img src="${data.imageUrl}" class="review-attached-image" alt="Foto del cliente">` : '';
-
-    item.innerHTML = `
-      <div class="review-item-header">
-        <span class="review-author">${data.name}</span>
-        <span class="review-stars">${starsHtml}</span>
-      </div>
-      <p class="review-text">${data.text}</p>
-      ${imageHtml}
-    `;
-    reviewsList.appendChild(item);
   }
 
   if (toggleReviewFormBtn && reviewForm) {
@@ -438,65 +426,24 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   if (reviewForm) {
-    reviewForm.addEventListener("submit", async (e) => {
+    reviewForm.addEventListener("submit", (e) => {
       e.preventDefault();
       const nameInput = document.getElementById("reviewAuthor");
       const textInput = document.getElementById("reviewText");
-      const file = reviewImageInput ? reviewImageInput.files[0] : null;
 
       const title = currentProduct.title || "Producto";
-      
-      const submitBtn = reviewForm.querySelector('button[type="submit"]');
-      const originalBtnText = submitBtn ? submitBtn.innerText : "Publicar Reseña";
-      if (submitBtn) {
-        submitBtn.textContent = "PUBLICANDO...";
-        submitBtn.disabled = true;
-      }
+      if (!productReviews[title]) productReviews[title] = [];
 
-      try {
-        let imageUrl = "";
+      productReviews[title].unshift({
+        name: nameInput ? nameInput.value : "Anónimo",
+        stars: selectedRating,
+        text: textInput ? textInput.value : ""
+      });
 
-        // Si el usuario subió foto, la guardamos en Firebase Storage
-        if (file) {
-          const storageRef = ref(storage, `reviews/${Date.now()}_${file.name}`);
-          const snapshot = await uploadBytes(storageRef, file);
-          imageUrl = await getDownloadURL(snapshot.ref);
-        }
-
-        const nuevaReseña = {
-          productTitle: title,
-          name: nameInput ? nameInput.value : "Anónimo",
-          stars: selectedRating,
-          text: textInput ? textInput.value : "",
-          imageUrl: imageUrl,
-          fecha: new Date()
-        };
-
-        // Guardamos en Firestore
-        await addDoc(collection(db, "reviews"), nuevaReseña);
-
-        reviewForm.reset();
-        selectedRating = 5;
-        starBtns.forEach(s => s.classList.add("active"));
-        reviewForm.classList.add("hidden");
-
-        if (submitBtn) {
-          submitBtn.textContent = originalBtnText;
-          submitBtn.disabled = false;
-        }
-
-        // Recargamos las reseñas en vivo
-        cargarReseñasDeFirebase(title);
-        alert("¡Gracias por compartir tu opinión sobre la prenda!");
-
-      } catch (error) {
-        console.error("Error al guardar reseña en Firebase:", error);
-        alert("Hubo un error al publicar tu reseña. Inténtalo de nuevo.");
-        if (submitBtn) {
-          submitBtn.textContent = originalBtnText;
-          submitBtn.disabled = false;
-        }
-      }
+      renderReviews(title);
+      reviewForm.reset();
+      reviewForm.classList.add("hidden");
+      alert("¡Gracias por compartir tu opinión sobre la prenda!");
     });
   }
 
@@ -520,14 +467,14 @@ document.addEventListener("DOMContentLoaded", () => {
         cartItemsContainer.innerHTML = "";
         cart.forEach((item, index) => {
           const itemEl = document.createElement("div");
-          itemEl.style.cssText = "display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 10px;";
+          itemEl.style.cssText = "display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;";
           itemEl.innerHTML = `
             <div style="display: flex; align-items: center; gap: 10px;">
               <img src="${item.image}" alt="${item.title}" style="width: 50px; height: 60px; object-fit: cover; border-radius: 4px;">
               <div>
-                <h4 style="font-size: 14px; margin: 0; text-transform: uppercase; color: #fff;">${item.title}</h4>
-                <p style="font-size: 12px; color: #aaa; margin: 2px 0;">Talla: <strong>${item.size}</strong> | Cant: <strong>${item.quantity}</strong></p>
-                <p style="font-size: 13px; font-weight: bold; margin: 0; color: #22e600;">$${(item.price * item.quantity).toFixed(2)}</p>
+                <h4 style="font-size: 14px; margin: 0; text-transform: uppercase;">${item.title}</h4>
+                <p style="font-size: 12px; color: #666; margin: 2px 0;">Talla: <strong>${item.size}</strong> | Cant: <strong>${item.quantity}</strong></p>
+                <p style="font-size: 13px; font-weight: bold; margin: 0;">$${(item.price * item.quantity).toFixed(2)}</p>
               </div>
             </div>
             <button class="remove-item-btn" data-index="${index}" style="background: none; border: none; color: #ff3333; font-size: 18px; cursor: pointer; font-weight: bold;">✕</button>
@@ -542,6 +489,7 @@ document.addEventListener("DOMContentLoaded", () => {
             cart.splice(idx, 1);
             updateCartUI();
             
+            // Si eliminan algo del carrito y tienen la modal abierta, actualizamos el stock visual
             if (sizeSelect && sizeSelect.value) {
               updateStockUI(sizeSelect.value);
             }
@@ -581,6 +529,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     updateCartUI();
+    // Actualizamos visualmente el stock por si quieren agregar aún más del mismo producto
     updateStockUI(selectedSize); 
     
     return true;
@@ -624,6 +573,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     try {
+      // Petición al servidor para crear la sesión de pago
       const response = await fetch("/create-stripe-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -633,6 +583,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = await response.json();
 
       if (data.url) {
+        // Redirige al cliente a la pasarela segura de Stripe
         window.location.href = data.url;
       } else {
         alert("Hubo un error al crear la sesión de pago.");
@@ -672,28 +623,30 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
 });
-
-
 // ==========================================
-// 10. INTEGRACIÓN CON PAYPAL (BOTONES)
+  // 10. INTEGRACIÓN CON PAYPAL (BOTONES)
 // ==========================================
+
+// Verificamos que el script de PayPal haya cargado correctamente en el HTML
 if (window.paypal) {
   paypal.Buttons({
+    
+    // 1. Crear la orden (Llama a tu servidor)
     createOrder: async function(data, actions) {
-      // Nota: Asegúrate de que 'cart' sea accesible globalmente o pasa el total
+      // Calculamos el total de los artículos en el carrito
       const total = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
       
       try {
         const response = await fetch("/create-paypal-order", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: total.toFixed(2) })
+          body: JSON.stringify({ amount: total.toFixed(2) }) // Mandamos el total
         });
         
         const orderData = await response.json();
         
         if (orderData.id) {
-          return orderData.id;
+          return orderData.id; // Le regresamos el ID a PayPal para que abra la ventana de cobro
         } else {
           const errorDetail = orderData?.details?.[0];
           const errorMessage = errorDetail ? `${errorDetail.issue} ${errorDetail.description}` : 'No se pudo iniciar PayPal';
@@ -705,17 +658,24 @@ if (window.paypal) {
       }
     },
 
+    // 2. Capturar el pago (Llama a tu servidor cuando el cliente aprueba)
     onApprove: async function(data, actions) {
       try {
         const response = await fetch("/capture-paypal-order", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ orderID: data.orderID })
+          body: JSON.stringify({ orderID: data.orderID }) // El ID de la orden autorizada
         });
         
         const captureData = await response.json();
         
+        // Si el pago se procesó y se completó
         if (captureData.status === "COMPLETED") {
+          // Aquí vaciamos el carrito o cerramos el modal
+          cart = [];
+          updateCartUI();
+          
+          // Redirigimos a la página de éxito
           window.location.href = window.location.origin + "/exito.html";
         } else {
           alert("El pago no se pudo completar. Intenta nuevamente.");
@@ -726,9 +686,10 @@ if (window.paypal) {
       }
     },
     
+    // 3. En caso de que el usuario cierre la ventana o haya un error
     onError: function(err) {
       console.error("Error de PayPal:", err);
     }
     
-  }).render("#paypal-button-container");
+  }).render("#paypal-button-container"); // Dibuja los botones en tu HTML
 }
