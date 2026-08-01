@@ -8,11 +8,11 @@
 
 body {
     background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('images/fon2.GIF');
-    background-size: cover;
-    background-position: center;
+    background-size: 100% 100%;     /* Fuerza al GIF a estirarse exactamente por toda la pantalla */
+    background-position: center top;
     background-repeat: no-repeat;
+    background-attachment: fixed;   /* Mantiene el fondo estático mientras haces scroll */
     background-color: #000000;
-    min-height: 100vh;
 }
 
 /* --- NAVBAR --- */
