@@ -225,16 +225,15 @@ body::before {
   padding: 25px;
   width: 100%;
   max-width: 500px;
-  margin: 20px auto;
+  margin: 20px auto; /* Mantenemos el espacio original */
   
-  /* AQUÍ CORREGIMOS LA RUTA DE LA IMAGEN DE FONDO DEL MODAL */
   background-image: linear-gradient(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.1)), url('images/fondo10.jpeg');
   background-size: cover;
   background-position: center;
   
-  border: 2px solid #22e600;
-  border-radius: 8px;
-  box-shadow: 0 0 25px rgba(34, 230, 0, 0.4);
+  border: none; /* Quitamos el cuadro verde */
+  box-shadow: none; /* Quitamos el resplandor neón */
+  border-radius: 8px; /* Mantenemos las esquinas redondeadas */
   color: #ffffff;
 }
 
@@ -387,12 +386,17 @@ body::before {
 
 .modal-description {
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.6; /* Un poco más de espacio entre líneas para que respire el texto */
   color: #ffffff;
   border-top: 1px solid #333333;
   padding-top: 15px;
   margin-top: 20px;
-  font-family: Arial, sans-serif;
+  
+  /* --- CAMBIOS PARA LETRA ELEGANTE Y DELGADA --- */
+  font-family: 'Helvetica Neue', Helvetica, 'Segoe UI', Roboto, sans-serif; /* Fuentes más modernas y limpias */
+  font-weight: 300; /* Este valor (Light) es el que hace la letra delgada */
+  letter-spacing: 0.5px; /* Separa un poquitito las letras para darle más elegancia */
+  
   text-shadow: 0 0 8px rgba(0, 0, 0, 0.9);
 }
 
