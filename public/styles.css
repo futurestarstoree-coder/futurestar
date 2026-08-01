@@ -8,10 +8,10 @@
 
 body {
     background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('images/fon2.GIF');
-    background-size: 100% 100%;     /* Fuerza al GIF a estirarse exactamente por toda la pantalla */
+    background-size: cover; /* <--- CAMBIA ESTO */
     background-position: center top;
     background-repeat: no-repeat;
-    background-attachment: fixed;   /* Mantiene el fondo estático mientras haces scroll */
+    background-attachment: fixed;
     background-color: #000000;
 }
 
@@ -921,3 +921,69 @@ body {
   opacity: 0.9;
 }
 /* --- SECCIÓN BANNER MARCA --- */
+.brand-banner-section {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+  background-color: transparent;
+}
+
+.brand-logo-img {
+  width: 100%;
+  max-width: 1000px; /* Limita el ancho para que no se vea gigante */
+  height: auto;     /* Mantiene la proporción original, evita que se deforme */
+  object-fit: contain;
+  border-radius: 8px; /* Opcional, por si quieres bordes redondeados */
+}
+
+/* --- SECCIÓN OFERTA ESPECIAL --- */
+.special-offer-section {
+  text-align: center;
+  padding: 40px 20px;
+  background-color: transparent;
+  color: #22e600; /* Pone todo el texto en verde por defecto */
+}
+
+.offer-content {
+  background: rgba(0, 0, 0, 0.);
+  border-radius: 8px;
+  padding: 30px;
+  max-width: 600px;
+  margin: 0 auto;
+  box-shadow: 0 0 15px rgba(34, 230, 0, 0.3);
+}
+
+.offer-icon {
+  font-size: 40px;
+  margin-bottom: 10px;
+}
+
+.special-offer-section h2 {
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  margin-bottom: 15px;
+  color: #22e600;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.discount-badge {
+  display: inline-block;
+  background-color: #22e600;
+  color: #000000;
+  font-weight: bold;
+  font-size: 18px;
+  padding: 5px 15px;
+  margin-bottom: 15px;
+}
+
+.coupon-code {
+  font-size: 16px;
+  color: #ffffff; /* Texto secundario en blanco para contrastar */
+}
+
+.coupon-code strong {
+  color: #22e600; /* El cupón en verde */
+  font-size: 20px;
+}
