@@ -6,13 +6,27 @@
   font-family: 'Arial Black', Impact, sans-serif;
 }
 
+/* --- CONFIGURACIÓN DEL FONDO --- */
 body {
+    margin: 0;
+    padding: 0;
+    background-color: #000000; /* Fondo negro de respaldo */
+}
+
+/* Esta es la capa mágica que arregla el problema en celulares */
+body::before {
+    content: "";
+    position: fixed; /* Mantiene el fondo estático */
+    top: 0;
+    left: 0;
+    width: 100vw; /* 100% del ancho de la pantalla */
+    height: 100vh; /* 100% del alto de la pantalla (evita que se estire al infinito) */
     background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('images/fon2.GIF');
-    background-size: cover; /* <--- CAMBIA ESTO */
-    background-position: center top;
+    background-size: cover;
+    background-position: center center;
     background-repeat: no-repeat;
-    background-attachment: fixed;
-    background-color: #000000;
+    z-index: -1; /* Lo manda detrás de todo tu contenido */
+    pointer-events: none; /* Evita que estorbe al dar clics */
 }
 
 /* --- NAVBAR --- */
