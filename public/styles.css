@@ -8,10 +8,10 @@
 
 body {
     background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('images/fon2.GIF');
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed; 
-    background-repeat: no-repeat;
+    background-size: cover;          /* Hace que la imagen cubra toda la pantalla */
+    background-position: center;     /* Centra la imagen */
+    background-attachment: fixed;    /* Mantiene el fondo fijo al hacer scroll */
+    background-repeat: no-repeat;    /* EVITA que se repita como mosaico */
     background-color: #000000;
     overflow-x: hidden;
 }
@@ -922,81 +922,3 @@ body {
   opacity: 0.9;
 }
 /* --- SECCIÓN BANNER MARCA --- */
-/* --- SECCIÓN BANNER MARCA --- */
-.brand-banner-section {
-  width: 100%;
-  padding: 20px 15px;
-  display: flex;
-  justify-content: center;
-}
-
-.brand-banner-container {
-  width: 100%;
-  max-width: 1200px;
-  /* Queda totalmente transparente, sin bordes */
-  background: transparent;
-  border: none; 
-}
-
-.brand-logo-img {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-
-/* --- SECCIÓN OFERTA ESPECIAL --- */
-.special-offer-section {
-  text-align: center;
-  padding: 20px 20px 40px;
-  margin: 0;
-  /* Quitamos el cuadro oscuro y el borde para que flote sobre el fondo principal */
-  background: transparent; 
-  border: none; 
-  box-shadow: none;
-}
-
-.offer-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
-
-.offer-icon {
-  font-size: 35px;
-}
-
-.special-offer-section h2 {
-  color: #22e600; /* Letras verdes brillantes */
-  font-size: 32px;
-  font-weight: 900;
-  letter-spacing: 2px;
-  text-shadow: 0 0 10px rgba(0, 0, 0, 0.9), 0 0 15px rgba(34, 230, 0, 0.5);
-  margin: 0;
-}
-
-.discount-badge {
-  background-color: transparent; /* Quitamos el fondo para que solo sea texto */
-  color: #22e600; /* Texto verde brillante */
-  font-size: 28px;
-  font-weight: 900;
-  padding: 0;
-  margin: 0;
-  text-shadow: 0 0 10px rgba(0, 0, 0, 0.9), 0 0 15px rgba(34, 230, 0, 0.5);
-}
-
-.coupon-code {
-  color: #22e600;
-  font-size: 20px;
-  font-weight: bold;
-  text-shadow: 0 0 8px rgba(0, 0, 0, 0.9);
-}
-
-.coupon-code strong {
-  color: #22e600;
-  background-color: transparent;
-  border: none;
-  padding: 0;
-  margin-left: 5px;
-  letter-spacing: 1px;
-}
