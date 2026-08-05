@@ -12,12 +12,12 @@ document.addEventListener("DOMContentLoaded", () => {
   // Base de datos simulada de reseñas por producto
   const productReviews = {
     "SAKURA": [
-      { name: "Adrián R.", stars: 5, text: "La calidad de la tela está increíble, llegó súper rápido." },
+      { name: "Andrea L.", stars: 5, text: "Me gusto, llegó súper rápido." },
       { name: "Sofía T.", stars: 5, text: "Muy cómoda y el estampado se ve idéntico a las fotos." }
     ],
     "VIBES": [
       { name: "Mateo G.", stars: 4, text: "Excelente si me quedo oversize, la recomiendo al 100%." },
-    { name: "Jean P.", stars: 5, text: "la llevo siempre para entrenar, la tela no se siente pesada ni estorba para hacer los ejercicios." }
+    { name: "Ozil R.", stars: 5, text: "la llevo siempre para entrenar, la tela no se siente pesada ni estorba para hacer los ejercicios." }
     ],
     "HUNTING": [
       { name: "Miriam D.", stars: 5, text: "Súper cómoda me gusto el diseño, totalmente recomendada." },
