@@ -1,0 +1,1007 @@
+/* --- CONFIGURACIÓN GENERAL --- */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Arial Black', Impact, sans-serif;
+}
+
+/* --- CONFIGURACIÓN DEL FONDO --- */
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #000000; /* Fondo negro de respaldo */
+}
+
+/* Esta es la capa mágica que arregla el problema en celulares */
+body::before {
+    content: "";
+    position: fixed; /* Mantiene el fondo estático */
+    top: 0;
+    left: 0;
+    width: 100vw; /* 100% del ancho de la pantalla */
+    height: 100vh; /* 100% del alto de la pantalla (evita que se estire al infinito) */
+    background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('images/fon2.GIF');
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+    z-index: -1; /* Lo manda detrás de todo tu contenido */
+    pointer-events: none; /* Evita que estorbe al dar clics */
+}
+
+/* --- NAVBAR --- */
+.navbar {
+  position: absolute;  /* Flota sobre el fondo */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 60px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  z-index: 100;
+  background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);
+  box-sizing: border-box;
+}
+
+/* Botón Hamburguesa Verde Neón */
+.menu-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.menu-toggle span {
+  display: block;
+  width: 25px;
+  height: 3px;
+  background-color: #22e600;
+  border-radius: 2px;
+}
+
+/* Bolsa de Compras */
+.cart-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.cart-count {
+  position: absolute;
+  top: -4px;
+  right: -8px;
+  background-color: #22e600;
+  color: #000000;
+  font-size: 11px;
+  font-weight: bold;
+  border-radius: 50%;
+  padding: 2px 5px;
+}
+
+/* --- SECCIÓN VIDEO DE INICIO --- */
+.hero-container {
+  position: relative;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: transparent;
+}
+
+.hero-video {
+    width: 100%;
+    height: auto; 
+    display: block;
+    margin: 0;
+    padding: 0;
+    object-fit: cover;
+}
+
+/* --- BANNER "LO NUEVO" --- */
+.section-title {
+  text-align: center;
+  padding: 15px 0;
+  background-color: transparent;
+}
+
+.section-title h2 {
+  color: #22e600;
+  font-size: 32px;
+  letter-spacing: 2px;
+  font-weight: 900;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}
+
+/* --- SECCIÓN PRODUCTOS / GRILLA --- */
+.products-section {
+  padding: 20px 15px 40px;
+  background-color: transparent;
+}
+
+.products-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 35px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+@media (min-width: 600px) {
+  .products-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .products-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Tarjeta de Producto */
+.product-card {
+  text-align: left;
+  cursor: pointer;
+}
+
+.product-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.product-image {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background-color: rgba(17, 17, 17, 0.8);
+  margin-bottom: 10px;
+  border-radius: 4px;
+}
+
+.product-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.product-card:hover .product-image img {
+  transform: scale(1.03);
+}
+
+.product-title {
+  font-size: 22px;
+  font-weight: 900;
+  color: #22e600;
+  letter-spacing: 1px;
+  margin: 0 0 4px 0;
+  text-transform: uppercase;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}
+
+.product-price {
+  font-size: 18px;
+  color: #ffffff;
+  margin: 0;
+  font-weight: bold;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}
+
+.product-status.sold-out {
+  font-size: 16px;
+  color: #cccccc;
+  margin: 0;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}
+
+/* --- VISTA PREVIA (MODAL) --- */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.8);
+  color: #eee;
+  z-index: 9999;
+  overflow-y: auto;
+}
+
+.modal.active, .modal.open {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+/* --- VISTA PREVIA (MODAL) CON FONDO Y ESTILO NEÓN --- */
+.modal-content {
+  padding: 25px;
+  width: 100%;
+  max-width: 500px;
+  margin: 20px auto; /* Mantenemos el espacio original */
+  
+  background-image: linear-gradient(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.1)), url('images/fondo10.jpeg');
+  background-size: cover;
+  background-position: center;
+  
+  border: none; /* Quitamos el cuadro verde */
+  box-shadow: none; /* Quitamos el resplandor neón */
+  border-radius: 8px; /* Mantenemos las esquinas redondeadas */
+  color: #ffffff;
+}
+
+.close-modal {
+  background: none;
+  border: none;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-bottom: 15px;
+  color: #22e600;
+  text-shadow: 0 0 8px rgba(34, 230, 0, 0.4);
+  transition: opacity 0.2s ease;
+}
+
+.close-modal:hover {
+  opacity: 0.8;
+}
+
+.modal-title {
+  font-size: 28px;
+  font-weight: 900;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  color: #22e600;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.9), 0 0 8px rgba(34, 230, 0, 0.6);
+}
+
+.modal-price {
+  font-size: 22px;
+  font-weight: bold;
+  margin-bottom: 25px;
+  color: #ffffff;
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.9);
+}
+
+.modal-option {
+  margin-bottom: 20px;
+}
+
+.modal-option label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: #ffffff;
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.9);
+}
+
+.modal-option select {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #22e600;
+  border-radius: 4px;
+  font-size: 16px;
+  background: rgba(15, 15, 15, 0.9);
+  color: #ffffff;
+}
+
+.quantity-control {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #22e600;
+  border-radius: 4px;
+  background: #111111;
+}
+
+.quantity-control button {
+  background: none;
+  border: none;
+  padding: 10px 18px;
+  font-size: 18px;
+  cursor: pointer;
+  font-weight: bold;
+  color: #22e600;
+}
+
+.quantity-control button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  color: #555555;
+}
+
+.quantity-control span {
+  padding: 0 15px;
+  font-weight: bold;
+  color: #ffffff;
+}
+
+/* Botón de Agregar al Carrito (Estilo Neón) */
+.add-to-cart-btn {
+  width: 100%;
+  padding: 15px;
+  background-color: transparent;
+  color: #22e600;
+  border: 2px solid #22e600;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: bold;
+  margin-top: 15px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.add-to-cart-btn:hover {
+  background-color: #22e600;
+  color: #000000;
+  box-shadow: 0 0 12px rgba(34, 230, 0, 0.6);
+}
+
+.add-to-cart-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-color: #555555;
+  color: #555555;
+}
+
+.add-to-cart-btn:disabled:hover {
+  background-color: transparent;
+  box-shadow: none;
+  color: #555555;
+}
+
+/* Botón Comprar Ahora */
+.btn-buy-now {
+  width: 100%;
+  padding: 15px;
+  background-color: #22e600;
+  color: #000000;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  font-weight: bold;
+  margin-top: 10px;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.btn-buy-now:hover {
+  opacity: 0.9;
+  box-shadow: 0 0 12px #22e600;
+}
+
+.btn-buy-now:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background-color: #555555;
+  box-shadow: none;
+}
+
+.modal-description {
+  font-size: 14px;
+  line-height: 1.6; /* Un poco más de espacio entre líneas para que respire el texto */
+  color: #ffffff;
+  border-top: 1px solid #333333;
+  padding-top: 15px;
+  margin-top: 20px;
+  
+  /* --- CAMBIOS PARA LETRA ELEGANTE Y DELGADA --- */
+  font-family: 'Helvetica Neue', Helvetica, 'Segoe UI', Roboto, sans-serif; /* Fuentes más modernas y limpias */
+  font-weight: 300; /* Este valor (Light) es el que hace la letra delgada */
+  letter-spacing: 0.5px; /* Separa un poquitito las letras para darle más elegancia */
+  
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.9);
+}
+
+/* GALERÍA DE IMÁGENES Y MINIATURAS EN MODAL */
+.modal-image-container {
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.main-image-box {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  background-color: #111111;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.main-image-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: opacity 0.2s ease;
+}
+
+.thumbnails-gallery {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 5px;
+}
+
+.thumb-item {
+  width: 65px;
+  height: 65px;
+  min-width: 65px;
+  border-radius: 4px;
+  object-fit: cover;
+  cursor: pointer;
+  border: 2px solid #e0e0e0;
+  opacity: 0.6;
+  transition: all 0.2s ease;
+}
+
+.thumb-item.active, .thumb-item:hover {
+  opacity: 1;
+  border-color: #22e600;
+  box-shadow: 0 0 6px rgba(34, 230, 0, 0.5);
+}
+
+/* SECCIÓN RESEÑAS EN EL MODAL */
+.reviews-container {
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 2px solid #333333;
+}
+
+.reviews-list {
+  margin-bottom: 15px;
+}
+
+.review-item {
+  background: rgba(20, 20, 20, 0.9);
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  border-left: 4px solid #22e600;
+}
+
+.review-item-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+
+.review-author {
+  font-weight: bold;
+  color: #ffffff;
+}
+
+.review-stars {
+  color: #22e600;
+}
+
+.review-text {
+  font-size: 13px;
+  color: #cccccc;
+  font-family: Arial, sans-serif;
+}
+
+.btn-outline-review {
+  width: 100%;
+  background-color: transparent;
+  color: #22e600;
+  border: 2px solid #22e600;
+  padding: 10px 24px;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.3s ease;
+}
+
+.btn-outline-review:hover {
+  background-color: #22e600;
+  color: #000000;
+  box-shadow: 0 0 10px rgba(34, 230, 0, 0.5);
+}
+
+.review-form {
+  margin-top: 15px;
+  background: rgba(20, 20, 20, 0.9);
+  padding: 15px;
+  border-radius: 4px;
+}
+
+.review-form.hidden {
+  display: none;
+}
+
+.star-rating-select {
+  display: flex;
+  gap: 8px;
+  font-size: 20px;
+  cursor: pointer;
+  margin: 5px 0 10px;
+}
+
+.star-btn {
+  color: #555555;
+}
+
+.star-btn.active {
+  color: #22e600;
+}
+
+/* --- MODAL DE CHECKOUT --- */
+.checkout-content {
+  max-width: 550px;
+}
+
+.checkout-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid #22e600;
+  padding-bottom: 10px;
+  margin-bottom: 15px;
+}
+
+.security-badge {
+  font-size: 12px;
+  background: #000000;
+  color: #22e600;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #22e600;
+}
+
+.delivery-estimate-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(15, 15, 15, 0.9);
+  border: 1px dashed #22e600;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+}
+
+.delivery-tag {
+  font-size: 11px;
+  color: #22e600;
+  background: #000000;
+  padding: 2px 6px;
+  border-radius: 2px;
+}
+
+.delivery-date {
+  font-size: 14px;
+  font-weight: bold;
+  color: #ffffff;
+  margin-top: 4px;
+}
+
+.checkout-step {
+  background: rgba(15, 15, 15, 0.9);
+  border-radius: 4px;
+  padding: 15px;
+  margin-bottom: 15px;
+  border: 1px solid #333333;
+}
+
+.checkout-step h3 {
+  font-size: 16px;
+  color: #22e600;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+}
+
+.form-group {
+  margin-bottom: 12px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 12px;
+  color: #ffffff;
+  margin-bottom: 4px;
+  font-weight: bold;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 10px;
+  background: #000000;
+  border: 1px solid #333333;
+  color: #ffffff;
+  border-radius: 4px;
+  font-family: Arial, sans-serif;
+}
+
+.form-group input:focus {
+  border-color: #22e600;
+  outline: none;
+}
+
+.form-group.row-2 {
+  display: flex;
+  gap: 10px;
+}
+
+.form-group.row-2 > div {
+  flex: 1;
+}
+
+.checkout-summary-box {
+  background: #000000;
+  color: #ffffff;
+  padding: 15px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+  border: 1px solid #333333;
+}
+
+.summary-line {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+.summary-line.total {
+  border-top: 1px solid #333333;
+  padding-top: 10px;
+  font-size: 18px;
+  color: #22e600;
+}
+
+.btn-nike-pay {
+  width: 100%;
+  padding: 16px;
+  background: #22e600;
+  color: #000000;
+  font-size: 18px;
+  font-weight: 900;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.terms-disclaimer {
+  font-size: 11px;
+  color: #aaaaaa;
+  text-align: center;
+  margin-top: 10px;
+  font-family: Arial, sans-serif;
+}
+
+/* --- PANELES LATERALES (MENÚ Y CARRITO) --- */
+.drawer-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 1000;
+}
+
+.drawer-overlay.active {
+  display: block;
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  height: 100%;
+  width: 320px;
+  max-width: 85%;
+  background-color: #ffffff;
+  color: #000000;
+  z-index: 1001;
+  transition: transform 0.3s ease-in-out;
+  padding: 25px 20px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.left-drawer {
+  left: 0;
+  transform: translateX(-100%);
+}
+
+.right-drawer {
+  right: 0;
+  transform: translateX(100%);
+}
+
+.drawer.open {
+  transform: translateX(0);
+}
+
+.close-drawer {
+  background: none;
+  border: none;
+  font-size: 32px;
+  cursor: pointer;
+  color: #000000;
+  line-height: 1;
+}
+
+/* MENÚ SLIDE-OUT */
+.menu-content {
+  margin-top: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.menu-link {
+  font-size: 32px;
+  font-weight: 900;
+  color: #000000;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.menu-link.active {
+  background-color: #22e600;
+  padding: 5px 10px;
+  display: inline-block;
+}
+
+/* CARRITO SLIDE-OUT */
+.cart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid #111;
+  padding-bottom: 15px;
+}
+
+.cart-header h3 {
+  font-size: 20px;
+  font-weight: bold;
+  margin: 0;
+}
+
+.cart-items {
+  flex: 1;
+  overflow-y: auto;
+  margin-top: 20px;
+}
+
+.empty-cart-msg {
+  color: #666666;
+  margin-top: 30px;
+  font-size: 16px;
+  text-align: center;
+}
+
+.cart-footer {
+  border-top: 2px solid #eee;
+  padding-top: 15px;
+  margin-top: 15px;
+}
+
+.cart-total-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+/* --- FOOTER DE LA TIENDA --- */
+.site-footer {
+  background-color: transparent;
+  padding: 30px 20px;
+  text-align: center;
+  width: 100%;
+  position: relative;
+}
+
+.site-footer > * {
+  position: relative;
+  z-index: 2;
+}
+
+.footer-logo {
+  margin-bottom: 15px;
+}
+
+.footer-logo-img {
+  max-width: 180px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  filter: drop-shadow(0 0 8px rgba(0,0,0,0.8));
+}
+
+.footer-socials {
+  display: flex;
+  justify-content: center;
+  gap: 25px;
+  margin-bottom: 20px;
+}
+
+.footer-socials img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
+  transition: transform 0.2s ease;
+}
+
+.footer-socials img:hover {
+  transform: scale(1.15);
+}
+
+.copyright {
+  font-size: 11px;
+  color: #22e600;
+  font-family: Arial, sans-serif;
+  letter-spacing: 1.5px;
+}
+
+/* --- ESTILOS DE SECCIÓN DE CONTACTO --- */
+.contacto-section {
+  margin: 20px auto;
+  text-align: center;
+  width: 100%;
+  max-width: 350px;
+}
+
+.btn-contactanos {
+  background-color: transparent;
+  color: #22e600;
+  border: 2px solid #22e600;
+  padding: 10px 24px;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.3s ease;
+}
+
+.btn-contactanos:hover {
+  background-color: #22e600;
+  color: #000000;
+  box-shadow: 0 0 10px rgba(34, 230, 0, 0.5);
+}
+
+.cuadro-contacto {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 15px;
+  padding: 20px;
+  background: rgba(10, 10, 10, 0.95);
+  border: 1px solid #22e600;
+  border-radius: 6px;
+  text-align: left;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.9);
+}
+
+.cuadro-contacto.hidden {
+  display: none !important;
+}
+
+.cuadro-contacto h3 {
+  color: #22e600;
+  margin-bottom: 5px;
+  font-size: 15px;
+  text-transform: uppercase;
+  text-align: center;
+  letter-spacing: 1px;
+}
+
+.cuadro-contacto input,
+.cuadro-contacto textarea {
+  width: 100%;
+  padding: 10px;
+  background: #151515;
+  border: 1px solid #333333;
+  color: #ffffff;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.cuadro-contacto input:focus,
+.cuadro-contacto textarea:focus {
+  border-color: #22e600;
+  outline: none;
+  box-shadow: 0 0 5px rgba(34, 230, 0, 0.4);
+}
+
+.btn-enviar {
+  background-color: #22e600;
+  color: #000000;
+  border: none;
+  padding: 10px;
+  width: 100%;
+  font-weight: bold;
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 4px;
+  text-transform: uppercase;
+  transition: opacity 0.2s ease;
+}
+
+.btn-enviar:hover {
+  opacity: 0.9;
+}
+/* --- SECCIÓN BANNER MARCA --- */
+.brand-banner-section {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+  background-color: transparent;
+}
+
+.brand-logo-img {
+  width: 100%;
+  max-width: 1000px; /* Limita el ancho para que no se vea gigante */
+  height: auto;     /* Mantiene la proporción original, evita que se deforme */
+  object-fit: contain;
+  border-radius: 8px; /* Opcional, por si quieres bordes redondeados */
+}
+
+/* --- SECCIÓN OFERTA ESPECIAL --- */
+.special-offer-section {
+  text-align: center;
+  padding: 40px 20px;
+  background-color: transparent;
+  color: #22e600; /* Pone todo el texto en verde por defecto */
+}
+
+.offer-content {
+  background: rgba(0, 0, 0, 0.);
+  border-radius: 8px;
+  padding: 30px;
+  max-width: 600px;
+  margin: 0 auto;
+  box-shadow: 0 0 15px rgba(34, 230, 0, 0.3);
+}
+
+.offer-icon {
+  font-size: 40px;
+  margin-bottom: 10px;
+}
+
+.special-offer-section h2 {
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  margin-bottom: 15px;
+  color: #22e600;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.discount-badge {
+  display: inline-block;
+  background-color: #22e600;
+  color: #000000;
+  font-weight: bold;
+  font-size: 18px;
+  padding: 5px 15px;
+  margin-bottom: 15px;
+}
+
+.coupon-code {
+  font-size: 16px;
+  color: #ffffff; /* Texto secundario en blanco para contrastar */
+}
+
+.coupon-code strong {
+  color: #22e600; /* El cupón en verde */
+  font-size: 20px;
+}
