@@ -373,80 +373,139 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   // ==========================================
-  // 6. SISTEMA DE RESEÑAS / REVIEWS
-  // ==========================================
-  const reviewsList = document.getElementById("reviewsList");
-  const toggleReviewFormBtn = document.getElementById("toggleReviewFormBtn");
-  const reviewForm = document.getElementById("reviewForm");
-  const starBtns = document.querySelectorAll(".star-btn");
+// 6. SISTEMA DE RESEÑAS / REVIEWS
+// ==========================================
+const reviewsList = document.getElementById("reviewsList");
+const toggleReviewFormBtn = document.getElementById("toggleReviewFormBtn");
+const reviewForm = document.getElementById("reviewForm");
+const starBtns = document.querySelectorAll(".star-btn");
 
-  function renderReviews(title) {
-    if (!reviewsList) return;
-    const reviews = productReviews[title] || [];
+function renderReviews(title) {
+  if (!reviewsList) return;
 
-    if (reviews.length === 0) {
-      reviewsList.innerHTML = `
-        <div style="text-align: center; padding: 12px; background: #f8f8f8; border-radius: 4px; color: #666; font-size: 13px;">
-          <p>Aún no hay reseñas para esta prenda.</p>
-          <p style="margin-top:2px; font-weight:bold;">¡Sé el primero en opinar!</p>
+  const reviews = productReviews[title] || [];
+
+  if (reviews.length === 0) {
+    reviewsList.innerHTML = `
+      <div style="text-align: center; padding: 12px; background: #f8f8f8; border-radius: 4px; color: #666; font-size: 13px;">
+        <p>Aún no hay reseñas para esta prenda.</p>
+        <p style="margin-top:2px; font-weight:bold;">¡Sé el primero en opinar!</p>
+      </div>
+    `;
+  } else {
+    reviewsList.innerHTML = "";
+
+    reviews.forEach((r) => {
+      const starsHtml = "★".repeat(r.stars) + "☆".repeat(5 - r.stars);
+
+      const item = document.createElement("div");
+      item.className = "review-item";
+
+      item.innerHTML = `
+        <div class="review-item-header">
+          <span class="review-author">${r.name}</span>
+          <span class="review-stars">${starsHtml}</span>
         </div>
+        <p class="review-text">${r.text}</p>
       `;
-    } else {
-      reviewsList.innerHTML = "";
-      reviews.forEach((r) => {
-        const starsHtml = "★".repeat(r.stars) + "☆".repeat(5 - r.stars);
-        const item = document.createElement("div");
-        item.className = "review-item";
-        item.innerHTML = `
-          <div class="review-item-header">
-            <span class="review-author">${r.name}</span>
-            <span class="review-stars">${starsHtml}</span>
-          </div>
-          <p class="review-text">${r.text}</p>
-        `;
-        reviewsList.appendChild(item);
-      });
-    }
-  }
 
-  if (toggleReviewFormBtn && reviewForm) {
-    toggleReviewFormBtn.addEventListener("click", () => {
-      reviewForm.classList.toggle("hidden");
+      reviewsList.appendChild(item);
     });
   }
+}
 
-  starBtns.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      selectedRating = parseInt(btn.getAttribute("data-value"));
-      starBtns.forEach((s, idx) => {
-        if (idx < selectedRating) s.classList.add("active");
-        else s.classList.remove("active");
-      });
+if (toggleReviewFormBtn && reviewForm) {
+  toggleReviewFormBtn.addEventListener("click", () => {
+    reviewForm.classList.toggle("hidden");
+  });
+}
+
+starBtns.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    selectedRating = parseInt(btn.getAttribute("data-value"));
+
+    starBtns.forEach((s, idx) => {
+      if (idx < selectedRating) {
+        s.classList.add("active");
+      } else {
+        s.classList.remove("active");
+      }
     });
   });
+});
 
-  if (reviewForm) {
-    reviewForm.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const nameInput = document.getElementById("reviewAuthor");
-      const textInput = document.getElementById("reviewText");
+if (reviewForm) {
+  reviewForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
 
-      const title = currentProduct.title || "Producto";
-      if (!productReviews[title]) productReviews[title] = [];
+    const nameInput = document.getElementById("reviewAuthor");
+    const textInput = document.getElementById("reviewText");
 
-      productReviews[title].unshift({
-        name: nameInput ? nameInput.value : "Anónimo",
-        stars: selectedRating,
-        text: textInput ? textInput.value : ""
+    const name = nameInput ? nameInput.value.trim() : "";
+    const text = textInput ? textInput.value.trim() : "";
+    const product = currentProduct.title || "Producto";
+
+    if (!name || !text) {
+      alert("Por favor completa tu nombre y tu reseña.");
+      return;
+    }
+
+    const submitButton = reviewForm.querySelector('button[type="submit"]');
+
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.innerText = "ENVIANDO...";
+    }
+
+    try {
+      const response = await fetch("/send-review", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          product: product,
+          name: name,
+          stars: selectedRating,
+          text: text
+        })
       });
 
-      renderReviews(title);
-      reviewForm.reset();
-      reviewForm.classList.add("hidden");
-      alert("¡Gracias por compartir tu opinión sobre la prenda!");
-    });
-  }
+      const data = await response.json();
 
+      if (!response.ok) {
+        throw new Error(data.error || "No se pudo enviar la reseña.");
+      }
+
+      reviewForm.reset();
+
+      selectedRating = 5;
+
+      starBtns.forEach((s, idx) => {
+        if (idx < 5) {
+          s.classList.add("active");
+        }
+      });
+
+      reviewForm.classList.add("hidden");
+
+      alert("¡Gracias por tu reseña! La hemos recibido correctamente.");
+
+    } catch (error) {
+      console.error("Error enviando reseña:", error);
+
+      alert(
+        "No se pudo enviar la reseña. Por favor intenta nuevamente."
+      );
+
+    } finally {
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.innerText = "Enviar Reseña";
+      }
+    }
+  });
+}
 
   // ==========================================
   // 7. ACTUALIZAR RENDERIZADO DEL CARRITO
