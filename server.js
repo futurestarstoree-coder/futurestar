@@ -4,267 +4,1259 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const nodemailer = require("nodemailer");
+const fs = require("fs");
 
 const app = express();
 
+
+// ============================================================
+// CONFIGURACIÓN GENERAL
+// ============================================================
+
 app.use(cors());
-app.use(express.json());
 
-// ==========================================
-// ARCHIVOS PÚBLICOS
-// ==========================================
 
-app.use(express.static(path.join(__dirname, "public")));
+// ============================================================
+// ARCHIVOS DE INVENTARIO Y ÓRDENES
+// ============================================================
 
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
+const INVENTORY_FILE =
+  path.join(__dirname, "inventory.json");
 
-// ==========================================
-// CATÁLOGO SEGURO DEL SERVIDOR
-// ==========================================
+const ORDERS_FILE =
+  path.join(__dirname, "orders.json");
+
+
+// ============================================================
+// INVENTARIO INICIAL
+// ============================================================
 //
 // IMPORTANTE:
-// El navegador NO decide estos precios.
-// Tampoco decide el stock.
 //
-// Aunque alguien modifique el JavaScript
-// desde DevTools, estos son los valores
-// que realmente utilizará el servidor.
+// Estos valores solamente se utilizan si inventory.json
+// todavía no existe.
+//
+// Después, el servidor utiliza inventory.json.
 //
 
-const PRODUCTS = {
+const DEFAULT_INVENTORY = {
+
   SAKURA: {
+
     price: 350,
+
     stock: {
       S: 5,
       M: 2,
       L: 1
     }
+
   },
 
   VIBES: {
+
     price: 350,
+
     stock: {
       S: 10,
       M: 15,
       L: 8
     }
+
   },
 
   DREAM: {
+
     price: 350,
+
     stock: {
       S: 0,
       M: 5,
       L: 4
     }
+
   },
 
   HUNTING: {
+
     price: 0,
+
     stock: {
       S: 0,
       M: 0,
       L: 0
     }
+
   }
+
 };
 
 
-// ==========================================
-// VALIDAR CARRITO EN EL SERVIDOR
-// ==========================================
+// ============================================================
+// CREAR ARCHIVOS SI NO EXISTEN
+// ============================================================
+
+if (!fs.existsSync(INVENTORY_FILE)) {
+
+  fs.writeFileSync(
+    INVENTORY_FILE,
+    JSON.stringify(
+      DEFAULT_INVENTORY,
+      null,
+      2
+    )
+  );
+
+}
+
+
+if (!fs.existsSync(ORDERS_FILE)) {
+
+  fs.writeFileSync(
+    ORDERS_FILE,
+    JSON.stringify(
+      {},
+      null,
+      2
+    )
+  );
+
+}
+
+
+// ============================================================
+// FUNCIONES PARA INVENTARIO
+// ============================================================
+
+function readInventory() {
+
+  try {
+
+    const data =
+      fs.readFileSync(
+        INVENTORY_FILE,
+        "utf8"
+      );
+
+    return JSON.parse(data);
+
+  } catch (error) {
+
+    console.error(
+      "Error leyendo inventory.json:",
+      error
+    );
+
+    throw new Error(
+      "No se pudo leer el inventario."
+    );
+
+  }
+
+}
+
+
+function saveInventory(
+  inventory
+) {
+
+  const tempFile =
+    `${INVENTORY_FILE}.tmp`;
+
+  fs.writeFileSync(
+    tempFile,
+    JSON.stringify(
+      inventory,
+      null,
+      2
+    )
+  );
+
+  fs.renameSync(
+    tempFile,
+    INVENTORY_FILE
+  );
+
+}
+
+
+// ============================================================
+// FUNCIONES PARA ÓRDENES
+// ============================================================
+
+function readOrders() {
+
+  try {
+
+    const data =
+      fs.readFileSync(
+        ORDERS_FILE,
+        "utf8"
+      );
+
+    return JSON.parse(data);
+
+  } catch (error) {
+
+    console.error(
+      "Error leyendo orders.json:",
+      error
+    );
+
+    throw new Error(
+      "No se pudieron leer las órdenes."
+    );
+
+  }
+
+}
+
+
+function saveOrders(
+  orders
+) {
+
+  const tempFile =
+    `${ORDERS_FILE}.tmp`;
+
+  fs.writeFileSync(
+    tempFile,
+    JSON.stringify(
+      orders,
+      null,
+      2
+    )
+  );
+
+  fs.renameSync(
+    tempFile,
+    ORDERS_FILE
+  );
+
+}
+
+
+// ============================================================
+// RESERVAS
+// ============================================================
 //
-// El cliente solamente debe mandar:
+// Una reserva dura 30 minutos.
+//
+// Stripe también se configurará para expirar aproximadamente
+// en este mismo periodo.
+//
+
+const RESERVATION_TIME =
+  30 * 60 * 1000;
+
+
+// ============================================================
+// LIBERAR RESERVAS EXPIRADAS
+// ============================================================
+
+function cleanupExpiredReservations() {
+
+  const orders =
+    readOrders();
+
+  const inventory =
+    readInventory();
+
+  const now =
+    Date.now();
+
+  let changed =
+    false;
+
+
+  for (
+    const orderId of Object.keys(orders)
+  ) {
+
+    const order =
+      orders[orderId];
+
+
+    if (
+      !order ||
+      order.status !== "reserved"
+    ) {
+
+      continue;
+
+    }
+
+
+    const createdAt =
+      Number(order.createdAt) || 0;
+
+
+    if (
+      !createdAt
+    ) {
+
+      continue;
+
+    }
+
+
+    if (
+      now - createdAt <
+      RESERVATION_TIME
+    ) {
+
+      continue;
+
+    }
+
+
+    // ========================================================
+    // DEVOLVER STOCK
+    // ========================================================
+
+    for (
+      const item of order.items || []
+    ) {
+
+      if (
+        inventory[item.title] &&
+        inventory[item.title].stock &&
+        inventory[item.title].stock[item.size] !== undefined
+      ) {
+
+        inventory[item.title].stock[item.size] +=
+          Number(item.quantity) || 0;
+
+      }
+
+    }
+
+
+    order.status =
+      "expired";
+
+    order.expiredAt =
+      new Date().toISOString();
+
+    changed =
+      true;
+
+  }
+
+
+  if (
+    changed
+  ) {
+
+    saveInventory(
+      inventory
+    );
+
+    saveOrders(
+      orders
+    );
+
+  }
+
+}
+
+
+// ============================================================
+// VALIDAR Y CONSTRUIR CARRITO
+// ============================================================
+//
+// EL CLIENTE SOLO PUEDE ENVIAR:
 //
 // title
 // size
 // quantity
 //
-// NO confiamos en:
+// NO CONFIAMOS EN:
+//
 // price
 // total
 // subtotal
 //
-// El precio se obtiene de PRODUCTS.
+// El precio siempre sale de inventory.json.
 //
 
-function validateAndBuildCart(items) {
+function validateAndBuildCart(
+  items
+) {
 
-  if (!Array.isArray(items) || items.length === 0) {
-    throw new Error("El carrito está vacío.");
+  cleanupExpiredReservations();
+
+
+  if (
+    !Array.isArray(items) ||
+    items.length === 0
+  ) {
+
+    throw new Error(
+      "El carrito está vacío."
+    );
+
   }
 
-  if (items.length > 50) {
-    throw new Error("El carrito contiene demasiados productos.");
+
+  if (
+    items.length > 50
+  ) {
+
+    throw new Error(
+      "El carrito contiene demasiados productos."
+    );
+
   }
 
-  const requested = new Map();
 
-  for (const item of items) {
+  const inventory =
+    readInventory();
 
-    if (!item || typeof item !== "object") {
-      throw new Error("Producto inválido.");
+  const requested =
+    new Map();
+
+
+  for (
+    const item of items
+  ) {
+
+    if (
+      !item ||
+      typeof item !== "object"
+    ) {
+
+      throw new Error(
+        "Producto inválido."
+      );
+
     }
 
-    const title =typeof item.title === "string" ? item.title.trim().toUpperCase(): "";
-const size = typeof item.size === "string" ? item.size.trim().toUpperCase(): "";
-const quantity = Number(item.quantity);
 
-    // --------------------------------------
+    const title =
+      typeof item.title === "string"
+        ? item.title
+            .trim()
+            .toUpperCase()
+        : "";
+
+
+    const size =
+      typeof item.size === "string"
+        ? item.size
+            .trim()
+            .toUpperCase()
+        : "";
+
+
+    const quantity =
+      Number(
+        item.quantity
+      );
+
+
+    // ========================================================
     // PRODUCTO
-    // --------------------------------------
+    // ========================================================
 
-    if (!title || !PRODUCTS[title]) {
+    if (
+      !title ||
+      !inventory[title]
+    ) {
+
       throw new Error(
         `El producto "${title || "desconocido"}" no existe.`
       );
+
     }
 
-    const product = PRODUCTS[title];
 
-    // --------------------------------------
+    // ========================================================
     // TALLA
-    // --------------------------------------
+    // ========================================================
 
-    if (!["S", "M", "L"].includes(size)) {
+    if (
+      !["S", "M", "L"].includes(
+        size
+      )
+    ) {
+
       throw new Error(
         `La talla seleccionada para ${title} no es válida.`
       );
+
     }
 
-    // --------------------------------------
+
+    // ========================================================
     // CANTIDAD
-    // --------------------------------------
+    // ========================================================
 
     if (
       !Number.isInteger(quantity) ||
       quantity <= 0 ||
       quantity > 20
     ) {
+
       throw new Error(
         `La cantidad solicitada para ${title} no es válida.`
       );
+
     }
 
-    // --------------------------------------
+
+    // ========================================================
     // AGRUPAR PRODUCTOS REPETIDOS
-    // --------------------------------------
-    //
-    // Esto evita que alguien mande:
-    //
-    // SAKURA M x 2
-    // SAKURA M x 2
-    // SAKURA M x 2
-    //
-    // para intentar superar el stock.
+    // ========================================================
 
-    const key = `${title}__${size}`;
+    const key =
+      `${title}__${size}`;
 
-    const previous = requested.get(key) || 0;
+
+    const previous =
+      requested.get(key) || 0;
+
+
+    const newQuantity =
+      previous + quantity;
+
+
+    if (
+      newQuantity > 20
+    ) {
+
+      throw new Error(
+        `La cantidad total solicitada para ${title} en talla ${size} es demasiado grande.`
+      );
+
+    }
+
 
     requested.set(
       key,
-      previous + quantity
+      newQuantity
     );
+
   }
 
 
-  // ========================================
-  // VALIDAR STOCK Y CREAR CARRITO SEGURO
-  // ========================================
+  // ========================================================
+  // CREAR CARRITO LIMPIO
+  // ========================================================
 
-  const cleanItems = [];
+  const cleanItems =
+    [];
 
-  for (const [key, quantity] of requested.entries()) {
 
-    const [title, size] = key.split("__");
+  for (
+    const [key, quantity]
+    of requested.entries()
+  ) {
 
-    const product = PRODUCTS[title];
+    const [
+      title,
+      size
+    ] =
+      key.split("__");
+
+
+    const product =
+      inventory[title];
+
 
     const availableStock =
-      Number(product.stock[size]) || 0;
+      Number(
+        product.stock?.[size]
+      ) || 0;
 
-    // --------------------------------------
-    // PRODUCTO AGOTADO
-    // --------------------------------------
 
-    if (availableStock <= 0) {
+    // ======================================================
+    // STOCK
+    // ======================================================
+
+    if (
+      availableStock <= 0
+    ) {
+
       throw new Error(
         `${title} en talla ${size} está agotado.`
       );
+
     }
 
-    // --------------------------------------
-    // STOCK INSUFICIENTE
-    // --------------------------------------
 
-    if (quantity > availableStock) {
+    if (
+      quantity > availableStock
+    ) {
+
       throw new Error(
         `No hay suficiente stock de ${title} en talla ${size}. ` +
         `Disponible: ${availableStock}.`
       );
+
     }
 
-    // --------------------------------------
-    // PRECIO DEL SERVIDOR
-    // --------------------------------------
-    //
-    // MUY IMPORTANTE:
-    //
-    // Aquí NO usamos item.price.
-    //
-    // El precio sale de PRODUCTS.
 
-    const serverPrice =
-      Number(product.price);
+    // ======================================================
+    // PRECIO DEL SERVIDOR
+    // ======================================================
+
+    const price =
+      Number(
+        product.price
+      );
+
 
     if (
-      !Number.isFinite(serverPrice) ||
-      serverPrice <= 0
+      !Number.isFinite(price) ||
+      price <= 0
     ) {
+
       throw new Error(
         `El precio de ${title} no es válido.`
       );
+
     }
 
+
     cleanItems.push({
+
       title,
+
       size,
+
       quantity,
-      price: serverPrice
+
+      price
+
     });
+
   }
 
+
   return cleanItems;
+
 }
 
 
-// ==========================================
-// CALCULAR TOTAL SEGURO
-// ==========================================
+// ============================================================
+// CALCULAR TOTAL
+// ============================================================
 
-function calculateCartTotal(items) {
+function calculateCartTotal(
+  items
+) {
 
-  return items.reduce(
-    (total, item) => {
+  const total =
+    items.reduce(
+      (
+        sum,
+        item
+      ) => {
 
-      return (
-        total +
-        item.price *
-        item.quantity
+        return (
+          sum +
+          (
+            item.price *
+            item.quantity
+          )
+        );
+
+      },
+      0
+    );
+
+
+  return Number(
+    total.toFixed(2)
+  );
+
+}
+
+
+// ============================================================
+// RESERVAR STOCK
+// ============================================================
+
+function reserveStock(
+  cleanItems,
+  orderId,
+  paymentProvider
+) {
+
+  cleanupExpiredReservations();
+
+
+  const inventory =
+    readInventory();
+
+  const orders =
+    readOrders();
+
+
+  // ========================================================
+  // COMPROBAR QUE TODAS LAS UNIDADES EXISTEN
+  // ========================================================
+
+  for (
+    const item of cleanItems
+  ) {
+
+    const product =
+      inventory[item.title];
+
+
+    if (
+      !product
+    ) {
+
+      throw new Error(
+        `El producto ${item.title} no existe.`
       );
 
-    },
-    0
+    }
+
+
+    const available =
+      Number(
+        product.stock?.[item.size]
+      ) || 0;
+
+
+    if (
+      item.quantity > available
+    ) {
+
+      throw new Error(
+        `No hay suficiente stock de ${item.title} en talla ${item.size}. ` +
+        `Disponible: ${available}.`
+      );
+
+    }
+
+  }
+
+
+  // ========================================================
+  // DESCONTAR STOCK
+  // ========================================================
+
+  for (
+    const item of cleanItems
+  ) {
+
+    inventory[
+      item.title
+    ].stock[
+      item.size
+    ] -= Number(
+      item.quantity
+    );
+
+  }
+
+
+  // ========================================================
+  // GUARDAR RESERVA
+  // ========================================================
+
+  orders[
+    orderId
+  ] = {
+
+    id:
+      orderId,
+
+    provider:
+      paymentProvider,
+
+    status:
+      "reserved",
+
+    createdAt:
+      Date.now(),
+
+    items:
+      cleanItems.map(
+        item => ({
+
+          title:
+            item.title,
+
+          size:
+            item.size,
+
+          quantity:
+            item.quantity,
+
+          price:
+            item.price
+
+        })
+      )
+
+  };
+
+
+  saveInventory(
+    inventory
   );
+
+  saveOrders(
+    orders
+  );
+
 }
 
 
-// ==========================================
-// CONFIGURACIÓN DE PAYPAL
-// ==========================================
+// ============================================================
+// COMPLETAR ORDEN
+// ============================================================
+
+function completeOrder(
+  orderId
+) {
+
+  const orders =
+    readOrders();
+
+
+  const order =
+    orders[orderId];
+
+
+  if (
+    !order
+  ) {
+
+    throw new Error(
+      "La orden no existe."
+    );
+
+  }
+
+
+  // ========================================================
+  // SI YA ESTÁ COMPLETADA
+  // ========================================================
+
+  if (
+    order.status ===
+    "completed"
+  ) {
+
+    return order;
+
+  }
+
+
+  // ========================================================
+  // SOLO UNA RESERVA PUEDE COMPLETARSE
+  // ========================================================
+
+  if (
+    order.status !==
+    "reserved"
+  ) {
+
+    throw new Error(
+      `La orden no puede completarse porque su estado actual es "${order.status}".`
+    );
+
+  }
+
+
+  order.status =
+    "completed";
+
+  order.completedAt =
+    new Date().toISOString();
+
+
+  saveOrders(
+    orders
+  );
+
+
+  return order;
+
+}
+
+
+// ============================================================
+// LIBERAR ORDEN
+// ============================================================
+
+function releaseOrder(
+  orderId
+) {
+
+  const orders =
+    readOrders();
+
+  const inventory =
+    readInventory();
+
+
+  const order =
+    orders[orderId];
+
+
+  if (
+    !order
+  ) {
+
+    return false;
+
+  }
+
+
+  if (
+    order.status !==
+    "reserved"
+  ) {
+
+    return false;
+
+  }
+
+
+  // ========================================================
+  // DEVOLVER STOCK
+  // ========================================================
+
+  for (
+    const item of order.items || []
+  ) {
+
+    if (
+      inventory[item.title] &&
+      inventory[item.title].stock &&
+      inventory[item.title].stock[item.size] !== undefined
+    ) {
+
+      inventory[
+        item.title
+      ].stock[
+        item.size
+      ] += Number(
+        item.quantity
+      ) || 0;
+
+    }
+
+  }
+
+
+  order.status =
+    "cancelled";
+
+  order.cancelledAt =
+    new Date().toISOString();
+
+
+  saveInventory(
+    inventory
+  );
+
+  saveOrders(
+    orders
+  );
+
+
+  return true;
+
+}
+
+
+// ============================================================
+// STRIPE
+// ============================================================
+
+const stripeSecretKey =
+  process.env.STRIPE_SECRET_KEY;
+
+const stripeWebhookSecret =
+  process.env.STRIPE_WEBHOOK_SECRET;
+
+
+const stripe =
+  stripeSecretKey
+    ? require("stripe")(
+        stripeSecretKey
+      )
+    : null;
+
+
+// ============================================================
+// STRIPE WEBHOOK
+// ============================================================
+//
+// IMPORTANTE:
+//
+// Esta ruta DEBE estar antes de express.json().
+//
+// Stripe necesita el body original.
+//
+
+app.post(
+  "/stripe-webhook",
+  express.raw({
+    type:
+      "application/json"
+  }),
+  (req, res) => {
+
+    if (
+      !stripe
+    ) {
+
+      return res.status(
+        500
+      ).send(
+        "Stripe no está configurado."
+      );
+
+    }
+
+
+    if (
+      !stripeWebhookSecret
+    ) {
+
+      console.error(
+        "Falta STRIPE_WEBHOOK_SECRET."
+      );
+
+
+      return res.status(
+        500
+      ).send(
+        "Falta STRIPE_WEBHOOK_SECRET."
+      );
+
+    }
+
+
+    let event;
+
+
+    try {
+
+      const signature =
+        req.headers[
+          "stripe-signature"
+        ];
+
+
+      event =
+        stripe.webhooks.constructEvent(
+          req.body,
+          signature,
+          stripeWebhookSecret
+        );
+
+    } catch (
+      error
+    ) {
+
+      console.error(
+        "Error verificando webhook Stripe:",
+        error.message
+      );
+
+
+      return res.status(
+        400
+      ).send(
+        `Webhook Error: ${error.message}`
+      );
+
+    }
+
+
+    // ========================================================
+    // PAGO COMPLETADO
+    // ========================================================
+
+    if (
+      event.type ===
+      "checkout.session.completed"
+    ) {
+
+      const session =
+        event.data.object;
+
+
+      const orderId =
+        session.metadata?.order_id;
+
+
+      if (
+        orderId
+      ) {
+
+        try {
+
+          const orders =
+            readOrders();
+
+          const order =
+            orders[orderId];
+
+
+          if (
+            !order
+          ) {
+
+            console.error(
+              `No se encontró la reserva Stripe ${orderId}.`
+            );
+
+          } else if (
+            order.provider !==
+            "stripe"
+          ) {
+
+            console.error(
+              `La orden ${orderId} no pertenece a Stripe.`
+            );
+
+          } else {
+
+            completeOrder(
+              orderId
+            );
+
+
+            console.log(
+              `Orden Stripe completada: ${orderId}`
+            );
+
+          }
+
+        } catch (
+          error
+        ) {
+
+          console.error(
+            "Error completando orden Stripe:",
+            error
+          );
+
+        }
+
+      }
+
+    }
+
+
+    // ========================================================
+    // SESIÓN STRIPE EXPIRADA
+    // ========================================================
+
+    if (
+      event.type ===
+      "checkout.session.expired"
+    ) {
+
+      const session =
+        event.data.object;
+
+
+      const orderId =
+        session.metadata?.order_id;
+
+
+      if (
+        orderId
+      ) {
+
+        try {
+
+          const released =
+            releaseOrder(
+              orderId
+            );
+
+
+          if (
+            released
+          ) {
+
+            console.log(
+              `Reserva Stripe liberada: ${orderId}`
+            );
+
+          }
+
+        } catch (
+          error
+        ) {
+
+          console.error(
+            "Error liberando reserva Stripe:",
+            error
+          );
+
+        }
+
+      }
+
+    }
+
+
+    res.json({
+      received:
+        true
+    });
+
+  }
+);
+
+
+// ============================================================
+// JSON
+// ============================================================
+
+app.use(
+  express.json()
+);
+
+
+// ============================================================
+// ARCHIVOS PÚBLICOS
+// ============================================================
+
+app.use(
+  express.static(
+    path.join(
+      __dirname,
+      "public"
+    )
+  )
+);
+
+
+app.get(
+  "/",
+  (req, res) => {
+
+    res.sendFile(
+      path.join(
+        __dirname,
+        "public",
+        "index.html"
+      )
+    );
+
+  }
+);
+
+
+// ============================================================
+// PAYPAL
+// ============================================================
 
 const PAYPAL_CLIENT_ID =
   process.env.PAYPAL_CLIENT_ID;
@@ -272,9 +1264,14 @@ const PAYPAL_CLIENT_ID =
 const PAYPAL_SECRET =
   process.env.PAYPAL_SECRET;
 
+
 const paypalBaseUrl =
   "https://api-m.paypal.com";
 
+
+// ============================================================
+// TOKEN PAYPAL
+// ============================================================
 
 async function generatePayPalAccessToken() {
 
@@ -286,30 +1283,41 @@ async function generatePayPalAccessToken() {
     throw new Error(
       "Faltan PAYPAL_CLIENT_ID o PAYPAL_SECRET en las variables de entorno."
     );
+
   }
+
 
   const auth =
     Buffer
       .from(
         `${PAYPAL_CLIENT_ID}:${PAYPAL_SECRET}`
       )
-      .toString("base64");
+      .toString(
+        "base64"
+      );
 
 
   const response =
     await fetch(
       `${paypalBaseUrl}/v1/oauth2/token`,
       {
-        method: "POST",
+
+        method:
+          "POST",
 
         headers: {
-          Authorization: `Basic ${auth}`,
+
+          Authorization:
+            `Basic ${auth}`,
+
           "Content-Type":
             "application/x-www-form-urlencoded"
+
         },
 
         body:
           "grant_type=client_credentials"
+
       }
     );
 
@@ -318,63 +1326,62 @@ async function generatePayPalAccessToken() {
     await response.json();
 
 
-  if (!response.ok) {
+  if (
+    !response.ok
+  ) {
 
     console.error(
       "Error de PayPal al obtener token:",
       data
     );
 
+
     throw new Error(
       data.error_description ||
       "No se pudo obtener el token de PayPal."
     );
+
   }
 
 
   return data.access_token;
+
 }
 
 
-// ==========================================
-// CREAR ORDEN DE PAYPAL
-// ==========================================
-//
-// IMPORTANTE:
-//
-// Ya NO recibimos:
-//
-// amount
-//
-// Recibimos:
-//
-// items
-//
-// Y el servidor calcula el total.
-//
+// ============================================================
+// CREAR ORDEN PAYPAL
+// ============================================================
 
 app.post(
   "/create-paypal-order",
   async (req, res) => {
 
+    let reservationId =
+      null;
+
+
     try {
 
       const {
         items
-      } = req.body;
+      } =
+        req.body;
 
 
-      // ------------------------------------
+      // ======================================================
       // VALIDAR CARRITO
-      // ------------------------------------
+      // ======================================================
 
       const cleanItems =
-        validateAndBuildCart(items);
+        validateAndBuildCart(
+          items
+        );
 
 
-      // ------------------------------------
-      // CALCULAR TOTAL REAL
-      // ------------------------------------
+      // ======================================================
+      // CALCULAR TOTAL
+      // ======================================================
 
       const total =
         calculateCartTotal(
@@ -387,53 +1394,131 @@ app.post(
         total <= 0
       ) {
 
-        return res.status(400).json({
+        return res.status(
+          400
+        ).json({
+
           error:
             "El total del carrito no es válido."
+
         });
+
       }
 
 
-      // ------------------------------------
+      // ======================================================
+      // CREAR ID DE RESERVA
+      // ======================================================
+
+      reservationId =
+        `paypal_${Date.now()}_${Math.random()
+          .toString(36)
+          .substring(
+            2,
+            10
+          )}`;
+
+
+      // ======================================================
+      // RESERVAR STOCK
+      // ======================================================
+
+      reserveStock(
+        cleanItems,
+        reservationId,
+        "paypal"
+      );
+
+
+      // ======================================================
       // TOKEN PAYPAL
-      // ------------------------------------
+      // ======================================================
 
       const accessToken =
         await generatePayPalAccessToken();
 
 
-      // ------------------------------------
-      // CREAR ORDEN
-      // ------------------------------------
+      // ======================================================
+      // CREAR ORDEN PAYPAL
+      // ======================================================
 
-const response =
-  await fetch(
-    "/create-paypal-order",
-    {
-      method: "POST",
+      const response =
+        await fetch(
+          `${paypalBaseUrl}/v2/checkout/orders`,
+          {
 
-      headers: {
-        "Content-Type":
-          "application/json"
-      },
+            method:
+              "POST",
 
-      body: JSON.stringify({
-        items: cart
-      })
-    }
-  );
+            headers: {
+
+              "Content-Type":
+                "application/json",
+
+              Authorization:
+                `Bearer ${accessToken}`
+
+            },
+
+            body:
+              JSON.stringify({
+
+                intent:
+                  "CAPTURE",
+
+                purchase_units: [
+
+                  {
+
+                    reference_id:
+                      reservationId,
+
+                    amount: {
+
+                      currency_code:
+                        "MXN",
+
+                      value:
+                        total.toFixed(2)
+
+                    }
+
+                  }
+
+                ]
+
+              })
+
+          }
+        );
 
 
       const order =
         await response.json();
 
 
-      if (!response.ok) {
+      // ======================================================
+      // ERROR PAYPAL
+      // ======================================================
+
+      if (
+        !response.ok
+      ) {
+
+        releaseOrder(
+          reservationId
+        );
+
+
+        reservationId =
+          null;
+
 
         console.error(
           "Error creando orden PayPal:",
           order
         );
+
 
         return res.status(
           response.status
@@ -448,37 +1533,112 @@ const response =
             order
 
         });
+
       }
 
 
-      // ------------------------------------
-      // DEVOLVER ORDEN
-      // ------------------------------------
+      // ======================================================
+      // GUARDAR ID REAL DE PAYPAL
+      // ======================================================
 
-      res.json(order);
+      const orders =
+        readOrders();
 
-    } catch (error) {
+
+      const reservation =
+        orders[
+          reservationId
+        ];
+
+
+      if (
+        !reservation
+      ) {
+
+        throw new Error(
+          "No se encontró la reserva de PayPal."
+        );
+
+      }
+
+
+      reservation.paypalOrderId =
+        order.id;
+
+
+      orders[
+        reservationId
+      ] =
+        reservation;
+
+
+      saveOrders(
+        orders
+      );
+
+
+      // ======================================================
+      // DEVOLVER ORDEN AL FRONTEND
+      // ======================================================
+
+      res.json(
+        order
+      );
+
+
+    } catch (
+      error
+    ) {
 
       console.error(
-        "Error creando la orden de PayPal:",
+        "Error creando orden PayPal:",
         error
       );
 
-      res.status(400).json({
+
+      if (
+        reservationId
+      ) {
+
+        try {
+
+          releaseOrder(
+            reservationId
+          );
+
+        } catch (
+          releaseError
+        ) {
+
+          console.error(
+            "Error liberando reserva PayPal:",
+            releaseError
+          );
+
+        }
+
+      }
+
+
+      res.status(
+        400
+      ).json({
 
         error:
           error.message ||
           "No se pudo crear la orden de PayPal."
 
       });
+
     }
+
   }
 );
 
 
-// ==========================================
-// CAPTURAR ORDEN DE PAYPAL
-// ==========================================
+// ============================================================
+// CAPTURAR ORDEN PAYPAL
+// ============================================================
 
 app.post(
   "/capture-paypal-order",
@@ -488,24 +1648,154 @@ app.post(
 
       const {
         orderID
-      } = req.body;
+      } =
+        req.body;
 
 
       if (
         !orderID ||
-        typeof orderID !== "string"
+        typeof orderID !==
+        "string"
       ) {
 
-        return res.status(400).json({
+        return res.status(
+          400
+        ).json({
+
           error:
             "Falta el ID de la orden de PayPal."
+
         });
+
       }
 
+
+      // ======================================================
+      // BUSCAR RESERVA
+      // ======================================================
+
+      const orders =
+        readOrders();
+
+
+      let reservationId =
+        null;
+
+      let reservation =
+        null;
+
+
+      for (
+        const id of Object.keys(
+          orders
+        )
+      ) {
+
+        const order =
+          orders[id];
+
+
+        if (
+          order &&
+          order.provider === "paypal" &&
+          order.paypalOrderId === orderID
+        ) {
+
+          reservationId =
+            id;
+
+          reservation =
+            order;
+
+          break;
+
+        }
+
+      }
+
+
+      if (
+        !reservation ||
+        !reservationId
+      ) {
+
+        return res.status(
+          404
+        ).json({
+
+          error:
+            "No se encontró la reserva asociada a esta orden de PayPal."
+
+        });
+
+      }
+
+
+      // ======================================================
+      // VERIFICAR ESTADO DE RESERVA
+      // ======================================================
+
+      if (
+        reservation.status !==
+        "reserved"
+      ) {
+
+        return res.status(
+          400
+        ).json({
+
+          error:
+            `La orden no puede capturarse porque su estado es "${reservation.status}".`
+
+        });
+
+      }
+
+
+      // ======================================================
+      // VERIFICAR EXPIRACIÓN DE RESERVA
+      // ======================================================
+
+      const createdAt =
+        Number(
+          reservation.createdAt
+        ) || 0;
+
+
+      if (
+        createdAt &&
+        Date.now() - createdAt >=
+        RESERVATION_TIME
+      ) {
+
+        releaseOrder(
+          reservationId
+        );
+
+
+        return res.status(
+          400
+        ).json({
+
+          error:
+            "La reserva de esta compra expiró. Vuelve a iniciar el pago."
+
+        });
+
+      }
+
+
+      // ======================================================
+      // TOKEN PAYPAL
+      // ======================================================
 
       const accessToken =
         await generatePayPalAccessToken();
 
+
+      // ======================================================
+      // CAPTURAR
+      // ======================================================
 
       const response =
         await fetch(
@@ -514,7 +1804,9 @@ app.post(
           `${encodeURIComponent(orderID)}/capture`,
 
           {
-            method: "POST",
+
+            method:
+              "POST",
 
             headers: {
 
@@ -525,7 +1817,9 @@ app.post(
                 `Bearer ${accessToken}`
 
             }
+
           }
+
         );
 
 
@@ -533,12 +1827,19 @@ app.post(
         await response.json();
 
 
-      if (!response.ok) {
+      // ======================================================
+      // ERROR CAPTURANDO
+      // ======================================================
+
+      if (
+        !response.ok
+      ) {
 
         console.error(
-          "Error capturando pago PayPal:",
+          "Error capturando PayPal:",
           captureData
         );
+
 
         return res.status(
           response.status
@@ -553,19 +1854,22 @@ app.post(
             captureData
 
         });
+
       }
 
 
-      // ------------------------------------
-      // VERIFICAR QUE PAYPAL LO COMPLETÓ
-      // ------------------------------------
+      // ======================================================
+      // VERIFICAR COMPLETED
+      // ======================================================
 
       if (
         captureData.status !==
         "COMPLETED"
       ) {
 
-        return res.status(400).json({
+        return res.status(
+          400
+        ).json({
 
           error:
             "El pago de PayPal no fue completado.",
@@ -574,102 +1878,278 @@ app.post(
             captureData.status
 
         });
+
       }
 
 
-      res.json(
-        captureData
+      // ======================================================
+      // VERIFICAR MONTO CAPTURADO
+      // ======================================================
+
+      const expectedTotal =
+        calculateCartTotal(
+          reservation.items
+        );
+
+
+      const capturedAmount =
+        Number(
+          captureData
+            ?.purchase_units?.[0]
+            ?.payments
+            ?.captures?.[0]
+            ?.amount
+            ?.value
+        );
+
+
+      if (
+        !Number.isFinite(
+          capturedAmount
+        ) ||
+        Math.abs(
+          capturedAmount -
+          expectedTotal
+        ) > 0.01
+      ) {
+
+        console.error(
+          "Monto PayPal inesperado.",
+          {
+            expectedTotal,
+            capturedAmount
+          }
+        );
+
+
+        return res.status(
+          400
+        ).json({
+
+          error:
+            "El monto capturado por PayPal no coincide con el total de la orden."
+
+        });
+
+      }
+
+
+      // ======================================================
+      // COMPLETAR ORDEN
+      // ======================================================
+
+      const completedOrder =
+        completeOrder(
+          reservationId
+        );
+
+
+      console.log(
+        `Pago PayPal completado: ${orderID}`
       );
 
-    } catch (error) {
+
+      res.json({
+
+        ...captureData,
+
+        orderStatus:
+          completedOrder.status,
+
+        internalOrderId:
+          reservationId
+
+      });
+
+
+    } catch (
+      error
+    ) {
 
       console.error(
-        "Error capturando el pago de PayPal:",
+        "Error capturando PayPal:",
         error
       );
 
-      res.status(500).json({
+
+      res.status(
+        500
+      ).json({
 
         error:
+          error.message ||
           "No se pudo capturar el pago de PayPal."
 
       });
+
     }
+
   }
 );
 
 
-// ==========================================
-// CONFIGURACIÓN DE STRIPE
-// ==========================================
+// ============================================================
+// LIBERAR RESERVA PAYPAL
+// ============================================================
 
-const stripeSecretKey =
-  process.env.STRIPE_SECRET_KEY;
+app.post(
+  "/release-paypal-order",
+  (req, res) => {
+
+    try {
+
+      const {
+        orderID
+      } =
+        req.body;
 
 
-if (!stripeSecretKey) {
+      if (
+        !orderID ||
+        typeof orderID !==
+        "string"
+      ) {
 
-  console.warn(
-    "ADVERTENCIA: STRIPE_SECRET_KEY no está configurada."
-  );
-}
+        return res.status(
+          400
+        ).json({
+
+          error:
+            "Falta el ID de la orden."
+
+        });
+
+      }
 
 
-const stripe = stripeSecretKey ? require("stripe")(stripeSecretKey): null;
+      const orders =
+        readOrders();
 
-// ==========================================
-// CREAR CHECKOUT DE STRIPE
-// ==========================================
-//
-// El navegador manda:
-//
-// title
-// size
-// quantity
-//
-// El servidor decide:
-//
-// precio
-// total
-//
-// De esta forma no se puede modificar
-// el precio desde el navegador.
-//
+
+      let reservationId =
+        null;
+
+
+      for (
+        const id of Object.keys(
+          orders
+        )
+      ) {
+
+        const order =
+          orders[id];
+
+
+        if (
+          order &&
+          order.provider === "paypal" &&
+          order.paypalOrderId === orderID
+        ) {
+
+          reservationId =
+            id;
+
+          break;
+
+        }
+
+      }
+
+
+      if (
+        reservationId
+      ) {
+
+        releaseOrder(
+          reservationId
+        );
+
+      }
+
+
+      res.json({
+
+        success:
+          true
+
+      });
+
+
+    } catch (
+      error
+    ) {
+
+      console.error(
+        "Error liberando reserva PayPal:",
+        error
+      );
+
+
+      res.status(
+        500
+      ).json({
+
+        error:
+          "No se pudo liberar la reserva."
+
+      });
+
+    }
+
+  }
+);
+
+
+// ============================================================
+// STRIPE - CREAR CHECKOUT
+// ============================================================
 
 app.post(
   "/create-stripe-checkout",
   async (req, res) => {
 
+    let reservationId =
+      null;
+
+
     try {
 
-      if (!stripe) {
+      if (
+        !stripe
+      ) {
 
-        return res.status(500).json({
+        return res.status(
+          500
+        ).json({
 
           error:
             "Stripe no está configurado correctamente."
 
         });
+
       }
 
 
       const {
         items,
         customer
-      } = req.body;
+      } =
+        req.body;
 
 
-      // ------------------------------------
+      // ======================================================
       // VALIDAR CARRITO
-      // ------------------------------------
+      // ======================================================
 
       const cleanItems =
-        validateAndBuildCart(items);
+        validateAndBuildCart(
+          items
+        );
 
 
-      // ------------------------------------
-      // CALCULAR TOTAL REAL
-      // ------------------------------------
+      // ======================================================
+      // TOTAL
+      // ======================================================
 
       const total =
         calculateCartTotal(
@@ -682,27 +2162,48 @@ app.post(
         total <= 0
       ) {
 
-        return res.status(400).json({
+        return res.status(
+          400
+        ).json({
 
           error:
             "El total del carrito no es válido."
 
         });
+
       }
 
 
-      // ------------------------------------
-      // DATOS DEL CLIENTE
-      // ------------------------------------
+      // ======================================================
+      // CLIENTE
+      // ======================================================
 
-const customerName = typeof customer?.name === "string" ? customer.name.trim(): "";
-const customerEmail =
-typeof customer?.email === "string" ? customer.email.trim(): "";
-const customerPhone =
-typeof customer?.phone === "string" ? customer.phone.trim(): "";
+      const customerName =
+        typeof customer?.name ===
+        "string"
+          ? customer.name.trim()
+          : "";
 
-const customerAddress =
-typeof customer?.address === "string" ? customer.address.trim(): "";
+
+      const customerEmail =
+        typeof customer?.email ===
+        "string"
+          ? customer.email.trim()
+          : "";
+
+
+      const customerPhone =
+        typeof customer?.phone ===
+        "string"
+          ? customer.phone.trim()
+          : "";
+
+
+      const customerAddress =
+        typeof customer?.address ===
+        "string"
+          ? customer.address.trim()
+          : "";
 
 
       if (
@@ -712,26 +2213,59 @@ typeof customer?.address === "string" ? customer.address.trim(): "";
         !customerAddress
       ) {
 
-        return res.status(400).json({
+        return res.status(
+          400
+        ).json({
 
           error:
             "Faltan datos del cliente."
 
         });
+
       }
 
 
-      // ------------------------------------
-      // CREAR LINE ITEMS SEGUROS
-      // ------------------------------------
+      // ======================================================
+      // RESERVA
+      // ======================================================
+
+      reservationId =
+        `stripe_${Date.now()}_${Math.random()
+          .toString(36)
+          .substring(
+            2,
+            10
+          )}`;
+
+
+      reserveStock(
+        cleanItems,
+        reservationId,
+        "stripe"
+      );
+
+
+      // ======================================================
+      // ORIGEN
+      // ======================================================
+
+      const origin =
+        req.headers.origin ||
+        `${req.protocol}://${req.get("host")}`;
+
+
+      // ======================================================
+      // LINE ITEMS
+      // ======================================================
 
       const lineItems =
         cleanItems.map(
-          (item) => ({
+          item => ({
 
             price_data: {
 
-              currency: "mxn",
+              currency:
+                "mxn",
 
               product_data: {
 
@@ -739,10 +2273,6 @@ typeof customer?.address === "string" ? customer.address.trim(): "";
                   `${item.title} - Talla ${item.size}`
 
               },
-
-              // --------------------------------
-              // ESTE PRECIO VIENE DEL SERVIDOR
-              // --------------------------------
 
               unit_amount:
                 Math.round(
@@ -758,18 +2288,26 @@ typeof customer?.address === "string" ? customer.address.trim(): "";
         );
 
 
-      // ------------------------------------
-      // ORIGEN
-      // ------------------------------------
+      // ======================================================
+      // EXPIRACIÓN STRIPE
+      // ======================================================
+      //
+      // La sesión se hace expirar aproximadamente al mismo
+      // tiempo que nuestra reserva.
+      //
 
-      const origin =
-        req.headers.origin ||
-        `${req.protocol}://${req.get("host")}`;
+      const stripeExpiresAt =
+        Math.floor(
+          (
+            Date.now() +
+            RESERVATION_TIME
+          ) / 1000
+        );
 
 
-      // ------------------------------------
+      // ======================================================
       // CREAR SESIÓN STRIPE
-      // ------------------------------------
+      // ======================================================
 
       const session =
         await stripe.checkout.sessions.create({
@@ -781,30 +2319,29 @@ typeof customer?.address === "string" ? customer.address.trim(): "";
           mode:
             "payment",
 
-
           line_items:
             lineItems,
-
-
-          // --------------------------------
-          // CORREO DEL CLIENTE
-          // --------------------------------
 
           customer_email:
             customerEmail,
 
-
-          // --------------------------------
-          // DATOS INTERNOS
-          // --------------------------------
-          //
-          // No usamos esto para calcular
-          // el precio.
-          //
-          // Solo sirve para identificar
-          // la compra posteriormente.
+          expires_at:
+            stripeExpiresAt,
 
           metadata: {
+
+            // ==================================================
+            // IMPORTANTE:
+            //
+            // Guardamos reservationId.
+            //
+            // NO cambiamos la llave de orders.
+            //
+            // Esto permite que el webhook encuentre la orden.
+            // ==================================================
+
+            order_id:
+              reservationId,
 
             customer_name:
               customerName.substring(
@@ -826,20 +2363,68 @@ typeof customer?.address === "string" ? customer.address.trim(): "";
 
           },
 
-
           success_url:
             `${origin}/exito.html`,
 
           cancel_url:
             `${origin}/`
 
-
         });
 
 
-      // ------------------------------------
-      // DEVOLVER URL DE STRIPE
-      // ------------------------------------
+      // ======================================================
+      // GUARDAR ID DE STRIPE
+      // ======================================================
+      //
+      // MUY IMPORTANTE:
+      //
+      // NO cambiamos la llave reservationId.
+      //
+      // El webhook utiliza metadata.order_id.
+      //
+
+      const orders =
+        readOrders();
+
+
+      const reservation =
+        orders[
+          reservationId
+        ];
+
+
+      if (
+        !reservation
+      ) {
+
+        throw new Error(
+          "No se encontró la reserva después de crear la sesión de Stripe."
+        );
+
+      }
+
+
+      reservation.stripeSessionId =
+        session.id;
+
+      reservation.stripeStatus =
+        "created";
+
+
+      orders[
+        reservationId
+      ] =
+        reservation;
+
+
+      saveOrders(
+        orders
+      );
+
+
+      // ======================================================
+      // DEVOLVER URL
+      // ======================================================
 
       res.json({
 
@@ -849,28 +2434,64 @@ typeof customer?.address === "string" ? customer.address.trim(): "";
       });
 
 
-    } catch (error) {
+    } catch (
+      error
+    ) {
 
       console.error(
-        "Error creando la sesión de Stripe:",
+        "Error creando checkout Stripe:",
         error
       );
 
-      res.status(400).json({
+
+      // ======================================================
+      // SI STRIPE FALLA:
+      // DEVOLVER STOCK
+      // ======================================================
+
+      if (
+        reservationId
+      ) {
+
+        try {
+
+          releaseOrder(
+            reservationId
+          );
+
+        } catch (
+          releaseError
+        ) {
+
+          console.error(
+            "Error liberando reserva Stripe:",
+            releaseError
+          );
+
+        }
+
+      }
+
+
+      res.status(
+        400
+      ).json({
 
         error:
           error.message ||
           "No se pudo crear la sesión de Stripe."
 
       });
+
     }
+
   }
 );
 
 
-// ==========================================
-// SISTEMA DE RESEÑAS POR CORREO
-// ==========================================
+// ============================================================
+// GMAIL
+// ============================================================
 
 const GMAIL_USER =
   process.env.GMAIL_USER;
@@ -911,12 +2532,13 @@ if (
   console.warn(
     "ADVERTENCIA: GMAIL_USER o GMAIL_APP_PASSWORD no están configurados."
   );
+
 }
 
 
-// ==========================================
+// ============================================================
 // ENVIAR RESEÑA
-// ==========================================
+// ============================================================
 
 app.post(
   "/send-review",
@@ -924,14 +2546,19 @@ app.post(
 
     try {
 
-      if (!reviewTransporter) {
+      if (
+        !reviewTransporter
+      ) {
 
-        return res.status(500).json({
+        return res.status(
+          500
+        ).json({
 
           error:
             "El sistema de reseñas por correo no está configurado."
 
         });
+
       }
 
 
@@ -940,7 +2567,8 @@ app.post(
         name,
         stars,
         text
-      } = req.body;
+      } =
+        req.body;
 
 
       if (
@@ -950,17 +2578,22 @@ app.post(
         !text
       ) {
 
-        return res.status(400).json({
+        return res.status(
+          400
+        ).json({
 
           error:
             "Faltan datos de la reseña."
 
         });
+
       }
 
 
       const starsNumber =
-        Number(stars);
+        Number(
+          stars
+        );
 
 
       if (
@@ -971,12 +2604,15 @@ app.post(
         starsNumber > 5
       ) {
 
-        return res.status(400).json({
+        return res.status(
+          400
+        ).json({
 
           error:
             "La calificación no es válida."
 
         });
+
       }
 
 
@@ -1036,63 +2672,178 @@ Esta reseña fue enviada desde la tienda FUTURESTAR.
       });
 
 
-    } catch (error) {
+    } catch (
+      error
+    ) {
 
       console.error(
         "Error enviando la reseña:",
         error
       );
 
-      res.status(500).json({
+
+      res.status(
+        500
+      ).json({
 
         error:
           "No se pudo enviar la reseña."
 
       });
+
     }
+
   }
 );
 
 
-// ==========================================
-// RUTA DE PRUEBA DEL SERVIDOR
-// ==========================================
+// ============================================================
+// API STATUS
+// ============================================================
 
 app.get(
   "/api/status",
   (req, res) => {
 
-    res.json({
+    try {
 
-      success:
-        true,
+      cleanupExpiredReservations();
 
-      message:
-        "Servidor FUTURESTAR funcionando correctamente.",
 
-      paypal:
-        !!PAYPAL_CLIENT_ID &&
-        !!PAYPAL_SECRET,
+      res.json({
 
-      stripe:
-        !!stripeSecretKey,
+        success:
+          true,
 
-      // Mercado Pago ya NO se utiliza.
-      mercadoPago:
-        false,
+        message:
+          "Servidor FUTURESTAR funcionando correctamente.",
 
-      gmail:
-        !!GMAIL_USER &&
-        !!GMAIL_APP_PASSWORD
+        paypal:
+          !!PAYPAL_CLIENT_ID &&
+          !!PAYPAL_SECRET,
 
-    });
+        stripe:
+          !!stripeSecretKey,
+
+        stripeWebhook:
+          !!stripeWebhookSecret,
+
+        mercadoPago:
+          false,
+
+        gmail:
+          !!GMAIL_USER &&
+          !!GMAIL_APP_PASSWORD
+
+      });
+
+    } catch (
+      error
+    ) {
+
+      console.error(
+        "Error en /api/status:",
+        error
+      );
+
+
+      res.status(
+        500
+      ).json({
+
+        success:
+          false,
+
+        error:
+          "No se pudo consultar el estado del servidor."
+
+      });
+
+    }
+
   }
 );
 
 
-// ==========================================
-// MANEJO DE ERRORES
-// ==========================================
+// ============================================================
+// INVENTARIO PÚBLICO
+// ============================================================
+//
+// NO DEVOLVEMOS PRECIOS.
+//
+// Solo stock.
+//
+
+app.get(
+  "/api/inventory",
+  (req, res) => {
+
+    try {
+
+      cleanupExpiredReservations();
+
+
+      const inventory =
+        readInventory();
+
+
+      const publicInventory =
+        {};
+
+
+      for (
+        const title of Object.keys(
+          inventory
+        )
+      ) {
+
+        publicInventory[
+          title
+        ] = {
+
+          stock:
+            inventory[
+              title
+            ].stock
+
+        };
+
+      }
+
+
+      res.json(
+        publicInventory
+      );
+
+
+    } catch (
+      error
+    ) {
+
+      console.error(
+        "Error obteniendo inventario:",
+        error
+      );
+
+
+      res.status(
+        500
+      ).json({
+
+        error:
+          "No se pudo obtener el inventario."
+
+      });
+
+    }
+
+  }
+);
+
+
+// ============================================================
+// MANEJO GENERAL DE ERRORES
+// ============================================================
 
 app.use(
   (
@@ -1107,22 +2858,38 @@ app.use(
       err
     );
 
-    res.status(500).json({
+
+    if (
+      res.headersSent
+    ) {
+
+      return next(
+        err
+      );
+
+    }
+
+
+    res.status(
+      500
+    ).json({
 
       error:
         "Ocurrió un error interno en el servidor."
 
     });
+
   }
 );
 
 
-// ==========================================
+// ============================================================
 // INICIAR SERVIDOR
-// ==========================================
+// ============================================================
 
 const PORT =
-  process.env.PORT || 4242;
+  process.env.PORT ||
+  4242;
 
 
 app.listen(
@@ -1130,7 +2897,15 @@ app.listen(
   () => {
 
     console.log(
-      `Servidor FUTURESTAR ejecutándose en puerto ${PORT}`
+      "=========================================="
+    );
+
+    console.log(
+      "SERVIDOR FUTURESTAR"
+    );
+
+    console.log(
+      "=========================================="
     );
 
     console.log(
@@ -1151,6 +2926,12 @@ app.listen(
     );
 
     console.log(
+      `Stripe Webhook configurado: ${
+        !!stripeWebhookSecret
+      }`
+    );
+
+    console.log(
       "Mercado Pago: DESACTIVADO"
     );
 
@@ -1159,6 +2940,10 @@ app.listen(
         !!GMAIL_USER &&
         !!GMAIL_APP_PASSWORD
       }`
+    );
+
+    console.log(
+      "=========================================="
     );
 
   }
