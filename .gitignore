@@ -1,0 +1,9 @@
+# Ocultar las variables de entorno y llaves secretas
+.env
+
+# Ocultar las dependencias de Node (pesan mucho y se descargan solas con npm install)
+node_modules/
+
+# Ocultar registros de errores o archivos temporales del sistema
+npm-debug.log
+.DS_Store
