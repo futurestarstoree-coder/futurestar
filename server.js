@@ -976,6 +976,15 @@ function releaseOrder(
 const stripeSecretKey =
   process.env.STRIPE_SECRET_KEY;
 
+console.log(
+  "Stripe configurado en modo:",
+  stripeSecretKey?.startsWith("sk_test_")
+    ? "TEST"
+    : stripeSecretKey?.startsWith("sk_live_")
+      ? "LIVE"
+      : "DESCONOCIDO"
+);
+
 const stripeWebhookSecret =
   process.env.STRIPE_WEBHOOK_SECRET;
 
