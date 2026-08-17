@@ -46,9 +46,9 @@ const DEFAULT_INVENTORY = {
     price: 350,
 
     stock: {
-      S: 5,
-      M: 2,
-      L: 1
+      S: 1,
+      M: 0,
+      L: 0
     }
 
   },
@@ -58,9 +58,9 @@ const DEFAULT_INVENTORY = {
     price: 350,
 
     stock: {
-      S: 10,
-      M: 15,
-      L: 8
+      S: 1,
+      M: 1,
+      L: 0
     }
 
   },
@@ -70,9 +70,9 @@ const DEFAULT_INVENTORY = {
     price: 350,
 
     stock: {
-      S: 0,
-      M: 5,
-      L: 4
+      S: 1,
+      M: 1,
+      L: 0
     }
 
   },
